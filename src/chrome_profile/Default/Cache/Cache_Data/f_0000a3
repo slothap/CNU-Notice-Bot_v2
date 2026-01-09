@@ -1,0 +1,746 @@
+var showLoding = function () {
+	$( '<div class="loading_box"><img src="' + global.contextPath + '/common/1user/common/css/portfolio/images/loading.gif"></div>' ).attr( "id" ,"ajaxLoading" ).addClass( "dialog" ).layout( {
+		"title" : "loading " ,
+		"dialogClass" : "dialog_loading" ,
+		/*"position" : "center" ,*/
+		"buttons" : []
+	} );
+};
+
+var removeLoding = function () {
+	$( "#ajaxLoading" ).dialog( 'destroy' ).remove();
+};
+$.ui.dialog.prototype._focusTabbable = function () {};
+( function ( $ ) {
+	$.fn.customTags = function (params) {
+
+		var hiddenObj = true;	/* hidden 되어 있는 영역에도 customTags 호출 */
+		if(params){
+			hiddenObj = params.hidden;
+		}
+
+		var $this = $( this );
+		$( "form[autocomplete='on']" ).find( ":input" ).each( function () {
+			var $this = $( this );
+			if ( !$this.attr( "name" ) ) return;
+			if ( ( $this.val() && !$this.is( ":radio" ) && !$this.is( ":checkbox" ) ) ) return;
+			if ( $this.is( "input[type='text'],textarea" ) ) {
+				if ( $this.classData().ime == "num" ) {
+					$this.val( "10" );
+				} else if ( $this.classData().ime == "email" ) {
+					$this.val( "usrpark@gmail.com" );
+				} else if ( $this.classData().ime == "tel" ) {
+					$this.val( "010-1111-2222" );
+				} else if ( $this.classData().ime == "date" ) {
+					$this.val( "2017.03.09" );
+				} else if ( $this.classData().ime == "dateHHmm" ) {
+					$this.val( "2017.03.09 00:00" );
+				} else if ( $this.classData().ime == "domain" ) {
+					$this.val( "http://naver.com" );
+				} else if ( $this.classData().ime == "custmNb" ) {
+					$this.val( "123-12-12345" );
+				} else {
+					$this.val( "2" );
+				}
+			} else if ( $this.is( "select" ) ) {
+				$this.find( "option:last" ).prop( "selected" ,true );
+			} else {
+				if ( !$this.parents( "form" ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + "):checked" ).length ) {
+					$this.parents( "form" ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + "):first" ).prop( "checked" ,true );
+				}
+			}
+		} );
+		// 데이터 없을때 컬럼 병합처리
+		$this.find( ".NO_RESULT" ).each( function () {
+			var colspan = 0;
+			$.each( $( this ).closest( "table" ).find( "thead tr:first th" ) ,function () {
+				colspan += $( this ).attr( "colspan" ) != null ? $.parseInt( $( this ).attr( "colspan" ) ) : 1;
+			} );
+			$( this ).attr( "colspan" ,colspan ).addClass('load');
+		} );
+		// 클릭이벤트 없도록 처리하는부분 onclick 이벤트 안먹는 버그있음
+		/*
+		 * $this.find( "a[href='#']" ).click( function ( e ) { e.preventDefault(); } );
+		 */
+		// 타이틀만 넣어도 placeholder가 타이틀로 적용되게 처리
+		$this.find( "input[type='text'],textarea" ).attr( {
+			"placeholder" : function () {
+				if ( $( this ).attr( "placeholder" ) != null ) return $( this ).attr( "placeholder" );
+				return $( this ).attr( "title" );
+			}
+		} );
+		// th에 있는 체크박스 체크시 모든 체크박스 공통처리
+		$this.find( "table thead input[type='checkbox']" ).change( function ( e ) {
+			e.preventDefault();
+			$( this ).closest( "table" ).find( "tbody input[type='checkbox']" ).not(":disabled").prop( "checked" ,$( this ).prop( "checked" ) );
+		} );
+		$this.find( "input[type='checkbox']").change( function ( e ) {
+			e.preventDefault();
+			var mat = /CmnSub$/;
+			if($(this).attr( "name" ) != null){
+				if( $(this).attr( "name" ).match( mat ) ){
+					if($(this).val() == '0000'){
+						$( this ).closest( "ul" ).find( "input[type='checkbox']" ).prop( "checked" ,$( this ).prop( "checked" ) );
+					}else{
+						$( this ).closest( "ul" ).find( "input[type='checkbox'][value='0000']" ).prop( "checked" , false );
+					}
+				}
+			}
+		});
+		// first, last class자동추가
+		$this.find( "table,ul,ol,select,input" ).each( function () {
+			if ( $( this ).is( "table" ) ) {
+				$( this ).find( "thead,tbody" ).find( "tr:first-child" ).addClass( "first" );
+				$( this ).find( "thead,tbody" ).find( "tr:last-child" ).addClass( "last" );
+				$( this ).find( "td:first-child,th:first-child" ).addClass( "first" );
+				$( this ).find( "td:last-child,th:last-child" ).addClass( "last" );
+			} else if ( $( this ).is( "ul" ) || $( this ).is( "ol" ) ) {
+				$( this ).find( "li:first" ).addClass( "first" );
+				$( this ).find( "li:last" ).addClass( "last" );
+			}
+		} );
+		//필수체크일때 별표시 자동추가
+		$( this ).find( "table" ).find( ":input" ).each( function () {
+			if ( $( this ).classData().required && $( this ).closest( "td" ).prev().is( "th" ) && !$( this ).closest( "td" ).prev().find( "span.star" ).length ) {
+				$( this ).closest( "td" ).prev().prepend( '<span class="star">*</span>\r\n' );
+			}
+		} );
+		$( this ).find( ".table-div" ).find( ":input" ).each( function () {
+			if ( $( this ).classData().required && $( this ).closest( ".td-li" ).prev().is( ".th-li" ) && !$( this ).closest( ".td-li" ).prev().find( "span.star" ).length ) {
+				$( this ).closest( ".td-li" ).prev().prepend( '<span class="star">*</span>\r\n' );
+			}
+		} );
+		$( this ).find( "table" ).find( "[class*=ime][class*=file]" ).each( function () {
+			if ( $( this ).classData().required && $( this ).closest( "td" ).prev().is( "th" ) && !$( this ).closest( "td" ).prev().find( "span.star" ).length ) {
+				$( this ).closest( "td" ).prev().prepend( '<span class="star">*</span>\r\n' );
+			}
+		} );
+		$( this ).find( "table" ).find( "[class*=ime][class*=imageEdit]" ).each( function () {
+			if ( $( this ).classData().required && $( this ).closest( "td" ).prev().is( "th" ) && !$( this ).closest( "td" ).prev().find( "span.star" ).length ) {
+				$( this ).closest( "td" ).prev().prepend( '<span class="star">*</span>\r\n' );
+			}
+		} );
+		//드래그엔드랍테이블
+		$this.find( ".sortable tbody" ).sortable( {
+			handle : ".ui-icon-arrowthick-2-n-s" ,
+			cursor : "move" ,
+			update : global.updateSortNum
+		} );
+		$this.find( ".COMMON_FILEUPLOAD" ).not( ".hasCommonFileupload" ).each( function () {
+			var list = $( this ).html() ? $.JSONEncode( $( this ).html() ) : null;
+			$( this ).empty();
+			var info = $( this ).data( "params" );
+			info = $.extend( info ,{
+				url : global.contextPath + "/common/cmnFile/upload.do" ,
+				dragDrop : false ,
+				returnType : "json" ,
+				allowedTypes : info.allowedTypes ? info.allowedTypes : '*' ,
+				maxFileSize : info.maxFileSize ? info.maxFileSize * 1024 * 1024 : -1 ,
+				limitFileSize : info.limitFileSize ? info.limitFileSize * 1024 * 1024 : -1 ,
+				list : list ,
+				showDelete : true ,
+				showDone : false ,
+				showStatusAfterError : false ,
+				onSubmit : function ( files ) {} ,
+				onSuccess : function ( files ,data ,xhr ) {} ,
+				afterUploadAll : function () {} ,
+				onError : function ( files ,status ,errMsg ) {
+				    $.alert("파일 업로드에 실패했습니다.\n디스크 공간이 부족하거나 파일이 손상되었을 수 있습니다.");
+				}
+			} );
+			$( this ).append( "<div class='layout'>" + info.title + "</div>" );
+			$( this ).find( ".layout" ).uploadFile( info );
+			$( this ).addClass( "hasCommonFileupload" ).show();
+		} );
+		if ( $this.find( "[class*=\\{][class*=\\}]" ).length ) {
+			$this.find( "[class*=\\{][class*=\\}]" ).each( function () {
+				$node = $( this );
+
+				if (hiddenObj){
+					if ( !$node.is( ":visible" ) || $node.is( ":hidden" ) ){
+						return true;
+					}
+					if ( $node.get( 0 ).disabled ) return true;
+				}
+				var info = $.JSONEncode( $node.attr( "class" ).replace( /(.+)?(\{.+\})(.+)?/ ,"$2" ) );
+				if ( info.maxlength ) {
+					$node.attr( "maxlength" ,info.maxlength );
+				} else {
+					$node.attr( "maxlength" ,100 );
+				}
+				// api등록완료
+				if ( info.ime == "kor" ) {
+					var $nodeKor = $node;
+					$nodeKor.keyup( function () {
+						$nodeKor.val( $nodeKor.val().replace( /[^ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "korEng" ) {
+					var $nodeKorEng = $node;
+					$nodeKorEng.keyup( function () {
+						$nodeKorEng.val( $nodeKorEng.val().replace( /[^ㄱ-ㅎ|ㅏ-ㅣ|가-힣|a-zA-Z]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "korEngNum" ) {
+					var $nodeKorEngNum = $node;
+					$nodeKorEngNum.keyup( function () {
+						$nodeKorEngNum.val( $nodeKorEngNum.val().replace( /[^ㄱ-ㅎ|ㅏ-ㅣ|가-힣|a-zA-Z0-9]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "korNum" ) {
+					var $nodeKorNum = $node;
+					$nodeKorNum.keyup( function () {
+						$nodeKorNum.val( $nodeKorNum.val().replace( /[^ㄱ-ㅎ|ㅏ-ㅣ|가-힣|0-9]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "eng" ) {
+					var $nodeEng = $node;
+					$nodeEng.keyup( function () {
+						$nodeEng.val( $nodeEng.val().replace( /[^a-zA-Z]/g ,"" ) );
+					} );
+					$nodeEng.focusout( function () {
+						$nodeEng.val( $nodeEng.val().replace( /[^a-zA-Z]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "engNum" ) {
+					var $nodeEngNum = $node;
+					$nodeEngNum.keyup( function () {
+						$nodeEngNum.val( $nodeEngNum.val().replace( /[^a-zA-Z0-9]/g ,"" ) );
+					} );
+					$nodeEngNum.focusout( function () {
+						$nodeEngNum.val( $nodeEngNum.val().replace( /[^a-zA-Z0-9]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "commCode" ) {
+					var $nodeCommCode = $node;
+					$nodeCommCode.keyup( function () {
+						$nodeCommCode.val( $nodeCommCode.val().replace( /[^a-zA-Z0-9\_\-]/g ,"" ) );
+					} );
+					$nodeCommCode.focusout( function () {
+						$nodeCommCode.val( $nodeCommCode.val().replace( /[^a-zA-Z0-9\_\-]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "password" ) {
+					$node.attr( "maxlength" ,"16" );
+					// api등록완료
+				} else if ( info.ime == "userid" ) {
+					$node.attr( "maxlength" ,"12" );
+					// api등록완료
+				} else if ( info.ime == "num" ) {
+					var $nodeNum = $node;
+					// $node.attr( "placeholder" ,"0" );
+					$nodeNum.css( {
+						"text-align" : "right"
+					} );
+					$nodeNum.keyup( function () {
+						$nodeNum.val( $nodeNum.val().replace( /[^0-9]/g ,"" ) );
+					} );
+					$nodeNum.focusout( function () {
+						$nodeNum.val( $nodeNum.val().replace( /[^0-9]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "float" ) {
+					var $nodepFloat = $node;
+					$nodepFloat.css( {
+						"text-align" : "right"
+					} );
+					$nodepFloat.keyup( function () {
+						$nodepFloat.val( $nodepFloat.val().replace( /[^0-9.]/g ,"" ) );
+					} );
+					$nodepFloat.focusout( function () {
+						$nodepFloat.val( $nodepFloat.val().replace( /[^0-9.]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "price" ) {
+					var $nodepPrice = $node;
+					$nodepPrice.css( {
+						"text-align" : "right"
+					} );
+					$nodepPrice.keyup( function () {
+						$nodepPrice.val( $nodepPrice.val().replace( /[^0-9,]/g ,"" ) );
+						$nodepPrice.val( $.numberFormat( $nodepPrice.val() ) );
+					} );
+					$nodepPrice.focusout( function () {
+						$nodepPrice.val( $nodepPrice.val().replace( /[^0-9,]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "year" ) {
+					var $nodepYear = $node;
+					$nodepYear.attr( "maxlength" ,"4" );
+					$nodepYear.keyup( function () {
+						$nodepYear.val( $nodepYear.val().replace( /[^0-9]/g ,"" ) );
+					} );
+					$nodepYear.focusout( function () {
+						$nodepYear.val( $nodepYear.val().replace( /[^0-9]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "custmNb" ) {
+					var $nodepCustmNb = $node;
+					$nodepCustmNb.attr( "maxlength" ,"12" );
+					$nodepCustmNb.keyup( function () {
+						$nodepCustmNb.val( $nodepCustmNb.val().replace( /[^0-9\-]/g ,"" ) );
+						$nodepCustmNb.val( $.custmNbFormat( $nodepCustmNb.val() ) );
+					} );
+					$nodepCustmNb.focusout( function () {
+						$nodepCustmNb.val( $nodepCustmNb.val().replace( /[^0-9\-]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "tel" || info.ime == "phon"  ) {
+					var $nodepTel = $node;
+					$nodepTel.attr( "maxlength" ,"13" );
+					if($nodepTel.val() != ''){
+						$nodepTel.val( $nodepTel.val().replace( /[^0-9\-]/g ,"" ) );
+						$nodepTel.val( $.telFormat( $nodepTel.val() ) );
+					}
+					$nodepTel.keyup( function () {
+						$nodepTel.val( $nodepTel.val().replace( /[^0-9\-]/g ,"" ) );
+						$nodepTel.val( $.telFormat( $nodepTel.val() ) );
+					} );
+					$nodepTel.focusout( function () {
+						$nodepTel.val( $nodepTel.val().replace( /[^0-9\-]/g ,"" ) );
+					} );
+					// api등록완료
+				} else if ( info.ime == "time" ) {
+					$node.attr( "maxlength" ,"5" );
+					var $nodepTime = $node;
+					$nodepTime.keyup( function () {
+						$nodepTime.val( $nodepTime.val().replace( /[^0-9\:]/g ,"" ) );
+					} );
+					$nodepTime.focusout( function () {
+						$nodepTime.val( $nodepTime.val().replace( /[^0-9\:]/g ,"" ) );
+					} );
+					$node.css( {
+						"text-align" : "left" ,
+						"width" : "85px"
+					} ).timepicker( {
+						'minTime' : (info.startTime) ? info.startTime : '09:00am' ,
+						'maxTime' : (info.endTime) ? info.endTime : '18:00pm' ,
+						'timeFormat' : 'H:i'
+					} ).attr( "placeholder" ,"hh:mm" ).addClass( "hasTimepicker" );
+					if ( info.maxTimeTarget && $( info.maxTimeTarget ) ) {
+						$.timeMinMaxChk($node, $("input[name='" + info.maxTimeTarget + "']"), "min", info);
+					}
+					if ( info.minTimeTarget && $( info.minTimeTarget ) ) {
+						$.timeMinMaxChk($("input[name='" + info.minTimeTarget + "']"), $node, "max", info);
+					}
+					// api등록완료
+				} else if ( info.ime == "date" ) {
+					$node.attr( "maxlength" ,"10" );
+					$node.attr( "placeholder" ,"yyyy.mm.dd" );
+					$node.attr( "readonly" ,"readonly" );
+					var $nodepDate = $node;
+					$nodepDate.keyup( function () {
+						$nodepDate.val( $nodepDate.val().replace( /[^0-9.]/g ,"" ) );
+						$nodepDate.val( $.dateFormat( $nodepDate.val() ,"yyyy.mm.dd" ) );
+						$nodepDate.val( $nodepDate.val().replace( /^([0-9]{4})(\.)?([0-9]{2})(\.)?([0-9]{2})/ ,"$1.$3.$5" ) );
+					} );
+					$nodepDate.focusout( function () {
+						$nodepDate.val( $nodepDate.val().replace( /[^0-9.]/g ,"" ) );
+						$nodepDate.val( $nodepDate.val().replace( /^([0-9]{4})(\.)?([0-9]{2})(\.)?([0-9]{2})/ ,"$1.$3.$5" ) );
+					} );
+					$node.datepicker( {
+						monthNames : [ '1월' ,'2월' ,'3월' ,'4월' ,'5월' ,'6월' ,'7월' ,'8월' ,'9월' ,'10월' ,'11월' ,'12월' ] ,
+						monthNamesShort: [ '1월' ,'2월' ,'3월' ,'4월' ,'5월' ,'6월' ,'7월' ,'8월' ,'9월' ,'10월' ,'11월' ,'12월' ], // For formatting
+						dayNames : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNamesShort : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNamesMin : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNames : [ '일요일' ,'월요일' ,'화요일' ,'수요일' ,'목요일' ,'금요일' ,'토요일' ] ,
+						dateFormat : 'yy.mm.dd' ,
+						showMonthAfterYear : true ,
+						yearSuffix : '년' ,
+						autoSize : false ,
+						changeYear : true ,
+						changeMonth: true,
+						yearRange : 'c-80:c+2' ,
+						showAnim : '' ,
+						minDate : info.minDate ? info.minDate : null ,
+						maxDate : info.maxDate ? info.maxDate : null
+					} );
+					if ( info.maxDateTarget && $( info.maxDateTarget ) ) {
+						$node.datepicker( "option" ,"maxDate" ,$("input[name='" + info.maxDateTarget + "']").val() );
+						$node.datepicker( "option" ,"onClose" ,function ( selectedDate ) {
+							$("input[name='" + info.maxDateTarget + "']").datepicker( "option" ,"minDate" ,selectedDate );
+							//$( info.maxDateTarget ).datepicker( "option" ,"minDate" ,selectedDate );
+						} );
+					}
+					if ( info.minDateTarget && $( info.minDateTarget ) ) {
+						$node.datepicker( "option" ,"minDate" ,$("input[name='" + info.minDateTarget + "']").val() );
+						$node.datepicker( "option" ,"onClose" ,function ( selectedDate ) {
+							$("input[name='" + info.minDateTarget + "']").datepicker( "option" ,"maxDate" ,selectedDate );
+							//$( info.minDateTarget ).datepicker( "option" ,"maxDate" ,selectedDate );
+						} );
+					}
+					// api등록완료
+				} else if ( info.ime == "dateYm" ) {
+					$node.attr( "maxlength" ,"7" );
+					$node.attr( "placeholder" ,"yyyy.mm" );
+					var $nodepDate = $node;
+					$nodepDate.keyup( function () {
+						$nodepDate.val( $nodepDate.val().replace( /[^0-9.]/g ,"" ) );
+						$nodepDate.val( $.dateFormat( $nodepDate.val() ,"yyyy.mm" ) );
+						$nodepDate.val( $nodepDate.val().replace( /^([0-9]{4})(\.)?([0-9]{2})/ ,"$1.$3" ) );
+					} );
+					$nodepDate.focusout( function () {
+						$nodepDate.val( $nodepDate.val().replace( /[^0-9.]/g ,"" ) );
+						$nodepDate.val( $nodepDate.val().replace( /^([0-9]{4})(\.)?([0-9]{2})/ ,"$1.$3" ) );
+					} );
+					$node.monthpicker( {
+						monthNames : [ '1월' ,'2월' ,'3월' ,'4월' ,'5월' ,'6월' ,'7월' ,'8월' ,'9월' ,'10월' ,'11월' ,'12월' ] ,
+						pattern : 'yyyy.mm'
+					} );
+					// api등록완료
+				} else if ( info.ime == "dateHHmm" ) {
+					$node.attr( "maxlength" ,"16" );
+					$node.attr( "placeholder" ,"yyyy.mm.dd hh:mm" );
+					$node.attr( "readonly", "readonly");
+					var $nodepDateHHmm = $node;
+					$nodepDateHHmm.keyup( function () {
+						$nodepDateHHmm.val( $nodepDateHHmm.val().replace( /[^0-9.\:\s]/g ,"" ) );
+						$nodepDate.val( $.dateFormat( $nodepDate.val() ,"yyyy.mm.dd hh:mm" ) );
+					} );
+					$nodepDateHHmm.focusout( function () {
+						$nodepDateHHmm.val( $nodepDateHHmm.val().replace( /[^0-9.\:\s]/g ,"" ) );
+					} );
+					$node.addClass( "hasDatetimepicker" ).datetimepicker( {
+						monthNames : [ '1월' ,'2월' ,'3월' ,'4월' ,'5월' ,'6월' ,'7월' ,'8월' ,'9월' ,'10월' ,'11월' ,'12월' ] ,
+						dayNames : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNamesShort : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNamesMin : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNames : [ '일요일' ,'월요일' ,'화요일' ,'수요일' ,'목요일' ,'금요일' ,'토요일' ] ,
+						dateFormat : 'yy.mm.dd' ,
+						changeYear : true ,
+						changeMonth: true,
+						yearRange : 'c-250:c+2' ,
+						showAnim : '' ,
+						showSecond : false ,
+						timeFormat : 'HH:mm' ,
+						stepHour : 1 ,
+						controlType : 'select' ,
+						oneLine : true ,
+						stepMinute : 1 ,
+						minDate : info.minDate ? info.minDate : null ,
+						maxDate : info.maxDate ? info.maxDate : null ,
+						minDateTime : info.minDateTime ? info.minDateTime : null ,
+						maxDateTime : info.maxDateTime ? info.maxDateTime : null
+					} );
+					if ( info.maxDateTarget && $( info.maxDateTarget ) ) {
+						$node.datepicker( "option" ,"maxDate" ,$( info.maxDateTarget ).val() );
+						$node.datepicker( "option" ,"onClose" ,function ( selectedDate ) {
+							$("input[name='" + info.maxDateTarget + "']").datepicker( "option" ,"minDate" ,selectedDate );
+							$("input[name='" + info.maxDateTarget + "']").datepicker( "option" ,"minDateTime" , new Date(selectedDate) );
+							//$( info.maxDateTarget ).datepicker( "option" ,"minDate" ,selectedDate );
+						} );
+					}
+					if ( info.minDateTarget && $( info.minDateTarget ) ) {
+						$node.datepicker( "option" ,"minDate" ,$( info.minDateTarget ).val() );
+						$node.datepicker( "option" ,"onClose" ,function ( selectedDate ) {
+							$("input[name='" + info.minDateTarget + "']").datepicker( "option" ,"maxDate" ,selectedDate );
+							$("input[name='" + info.minDateTarget + "']").datepicker( "option" ,"maxDateTime" , new Date(selectedDate) );
+							//$( info.minDateTarget ).datepicker( "option" ,"maxDate" ,selectedDate );
+						} );
+					}
+				} else if ( info.ime == "editor" ) {
+					$node.editor( {
+						height : 400
+					} );
+				} else if ( info.ime == "file" ) {
+					var list = $node.html() ? $.JSONEncode( $node.html() ) : null;
+					$node.empty();
+					var info = $node.data( "params" );
+					info = $.extend( info ,{
+						url : global.contextPath + "/comm/cmfile/upload.do" ,
+						dragDrop : false ,
+						returnType : "json" ,
+						allowedTypes : info.allowedTypes ? info.allowedTypes : '*' ,
+						maxFileSize : info.maxFileSize ? info.maxFileSize * 1024 * 1024 : -1 ,
+						limitFileSize : info.limitFileSize ? info.limitFileSize * 1024 * 1024 : -1 ,
+						list : list ,
+						showDelete : true ,
+						showDone : false ,
+						showStatusAfterError : false ,
+						onSubmit : function ( files ) {} ,
+						onSuccess : function ( files ,data ,xhr ) {} ,
+						afterUploadAll : function () {} ,
+						onError : function ( files ,status ,errMsg ) {
+						    $.alert("파일 업로드에 실패했습니다.\n디스크 공간이 부족하거나 파일이 손상되었을 수 있습니다.");
+                        }
+					} );
+					$node.append( "<div class='layout'>" + info.title + "</div>" );
+					$node.find( ".layout" ).uploadFile( info );
+					$node.addClass( "COMMON_FILEUPLOAD" ).addClass( "hasCommonFileupload" ).show();
+				} else if ( info.ime == "fileOne" ) {
+					var list = $node.html() ? $.JSONEncode( $node.html() ) : null;
+					$node.empty();
+					var info = $node.data( "params" );
+					info = $.extend( info ,{
+						url : global.contextPath + "/comm/cmfile/upload.do" ,
+						uploadType : "one",
+						dragDrop : false ,
+						returnType : "json" ,
+						allowedTypes : info.allowedTypes ? info.allowedTypes : '*' ,
+						maxFileSize : info.maxFileSize ? info.maxFileSize * 1024 * 1024 : -1 ,
+						limitFileSize : info.limitFileSize ? info.limitFileSize * 1024 * 1024 : -1 ,
+						list : list ,
+						showDelete : true ,
+						showDone : false ,
+						showStatusAfterError : false ,
+						onSubmit : function ( files ) {} ,
+						onSuccess : function ( files ,data ,xhr ) {} ,
+						afterUploadAll : function () {} ,
+						onError : function ( files ,status ,errMsg ) {
+						    $.alert("파일 업로드에 실패했습니다.\n디스크 공간이 부족하거나 파일이 손상되었을 수 있습니다.");
+                        }
+					} );
+					$node.append( "<div class='layout'>" + info.title + "</div>" );
+					$node.find( ".layout" ).uploadFile( info );
+					$node.addClass( "COMMON_FILEUPLOAD" ).addClass( "hasCommonFileupload" ).show();
+				} else if ( info.ime == "imageEdit" ) {
+					var info = $node.data( "params" );
+					var setting = $node.data( "setting" );
+					var position = info.repnImgCropValu ? info.repnImgCropValu.position : "";
+					var canvasData = info.repnImgCropValu ? info.repnImgCropValu.canvasData : "";
+					var status = (info.status == null ? 2 : info.status);
+					var fileGrpSeq = (info.fileGrpSeq == null ? 0 : info.fileGrpSeq);
+					var fileSeq = (info.fileSeq == null ? 0 : info.fileSeq);
+					var encSvrFileNm = (info.encSvrFileNm == null ? "" : info.encSvrFileNm);
+					if(setting.targetCls != undefined){
+						$node = $("."+setting.targetCls);
+					}
+					$node.html(
+							 '<div class="image">'
+							+	'<div class="fileimg_wrap'+setting.width+'">'
+							+		'<span class="img_file">'
+							+			'<img data-params=\'{"naturalWidth":"'+canvasData.naturalWidth+'","naturalHeight":"'+canvasData.naturalHeight+'","data":'+$.JSONDecode(info.repnImgCropValu)+',"svrFileNm" : "'+info.svrFileNm+'" ,"encSvrFileNm" : "'+info.encSvrFileNm+'","origFileNm":"'+info.origFileNm+'","fileExtsnNm":"'+info.fileExtsnNm+'","fileSz":"'+info.fileSz+'"}\' src="' + global.contextPath + '/comm/cmfile/crop.do?width='+position.w+'&height='+position.h+'&x='+position.x+'&y='+position.y+'&encSvrFileNm='+encSvrFileNm+'" id="fileEditeImg'+setting.name+'" alt=".." />'
+							+	   '</span>'
+							+	'</div>'
+							+	'<div class="imageInfo" id="' + setting.name + '">'
+							+	'</div>'
+							+'</div>'
+							);
+					if(setting.type != "view"){
+						$node.find('.image').append(
+								  '<div class="pt10">'
+								+	'<a href="#;" class="btn01 col04" onclick="global.imageEdit(\''+setting.name+'\',\''+status+'\',\''+fileGrpSeq+'\',\''+fileSeq+'\');">'
+								+		'<span>찾아보기</span>'
+								+	'</a>'
+								+	'<a href="#;" class="btn01 col03" id="imageDel' + setting.name + '" style="display:none;" onclick="global.imageDel(\''+setting.name+'\');">'
+								+		'<span>삭제</span>'
+								+	'</a>'
+								+	'<span class="pl10">이미지 권장 사이즈: '+setting.width+'px(가로) * '+setting.height+'px(세로)</span>'
+								+'</div>'
+								+'<p class="pt5">※jpg, png, gif 등 이미지 파일만 첨부 가능합니다.</p>'
+							);
+						if(info.fileGrpSeq != null){
+							$node.find('.imageInfo').append(
+									 '<input type="hidden" name="'+setting.name+'[0].status" value="'+ status +'"/>'
+									+'<input type="hidden" name="'+setting.name+'[0].fileGrpSeq" value="'+fileGrpSeq+'"/>'
+									+'<input type="hidden" name="'+setting.name+'[0].fileSeq" value="'+fileSeq+'"/>'
+									+'<input type="hidden" name="'+setting.name+'[0].origFileNm" value="'+info.origFileNm+'"/>'
+									+'<input type="hidden" name="'+setting.name+'[0].svrFileNm" value="'+info.svrFileNm+'"/>'
+									+'<input type="hidden" name="'+setting.name+'[0].fileExtsnNm" value="'+info.fileExtsnNm+'"/>'
+									+'<input type="hidden" name="'+setting.name+'[0].fileSz" value="'+info.fileSz+'"/>'
+									+'<input type="hidden" name="'+setting.name+'[0].repnImgCropValu" value='+$.JSONDecode(info.repnImgCropValu)+'>'
+								);
+							$node.find('#imageDel' + setting.name ).show();
+						}else{
+							$node.find('.imageInfo').append('<input type="hidden" name="'+setting.name+'" value="0"/>');
+						}
+					}
+				} else if ( info.ime == "slide" ) {
+					$node.addClass( "swiper-container" );
+					var html = $node.html();
+					var $swiperWrapper = $( '<div class="swiper-wrapper">' );
+					$swiperWrapper.append( html );
+					$node.empty();
+					$node.append( $swiperWrapper );
+					var info = $node.data( "params" );
+					if ( info.pagination ) {
+						$node.append( '<div class="swiper-pagination"></div>' );
+					}
+					if ( info.nextButton ) {
+						$node.append( '<div class="swiper-button-next"></div>' );
+					}
+					if ( info.prevButton ) {
+						$node.append( '<div class="swiper-button-prev"></div>' );
+					}
+					var breakpointsData = null;
+					if ( info.breakpoints ) {
+						breakpointsData = {
+							1024 : {
+								slidesPerView : 3 ,
+							} ,
+							760 : {
+								slidesPerView : 2 ,
+							} ,
+							480 : {
+								slidesPerView : 1 ,
+							}
+						}
+					}
+					setTimeout(function() {
+						var swiper = new Swiper( $node ,{
+							pagination : {
+								el : $node.find( '.swiper-pagination' ) ,
+								type : info.type
+							} ,
+							paginationClickable : true ,
+							slidesPerView : info.slidesPerView ,
+							breakpoints : breakpointsData ,
+							loop : info.loop ,
+							autoplay : info.autoplay ,
+							navigation : {
+								nextEl : $node.find( '.swiper-button-next' ) ,
+								prevEl : $node.find( '.swiper-button-prev' ) ,
+							} ,
+							spaceBetween : 30
+						});
+					},200);
+				} else if ( info.ime == "addr" ) {
+					var setting = $node.data( "setting" );
+					var params = $node.data( "params" );
+					$node.attr("id", setting.zipName);
+					$node.attr("name", setting.zipName);
+					$node.attr("value", params.zipName);
+					$node.attr("readonly", "readonly");
+					$node.addClass("wid100");
+					var $parentNode = $node.parent();
+					var nodeHtml = $parentNode.html();
+					$parentNode.empty();
+					$parentNode.append('<ul class="ul_list2">');
+					$parentNode.find("ul").append("<li>");
+					$parentNode.find("ul").append("<li>");
+					$parentNode.find("ul").append("<li>");
+					$parentNode.find("ul").find("li").eq(0).append(nodeHtml);
+					$parentNode.find("ul").find("li").eq(0).append('<a href="#;" class="btn01 col02" onclick="return $.daumZipcode($(\'#' + setting.zipName + '\'),$(\'#' + setting.addrName + '\'));">주소검색</a>');
+					if(setting.type){
+						$parentNode.find("ul").find("li").eq(0).append('<a href="#;" name="same" class="btn01 col04" onclick="scan();">주소상동</a>');
+					}
+					$parentNode.find("ul").find("li").eq(1).append('<input type="text" name="' + setting.addrName + '" id="' + setting.addrName + '" value="' + params.addrName + '" placeholder="주소" class="wid100p" value="" readonly="readonly" />');
+					$parentNode.find("ul").find("li").eq(2).append('<input type="text" name="' + setting.addrDtlName + '" id="' + setting.addrDtlName + '" value="' + params.addrDtlName + '" placeholder="상세주소" class="wid100p" value="" />');
+				} else if ( info.ime == "color" ) {
+					$node.spectrum( {
+						flat : true ,
+						showInput : true ,
+						className : "full-spectrum" ,
+						showInitial : true ,
+						showPalette : true ,
+						showButtons : false ,
+						showSelectionPalette : true ,
+						maxPaletteSize : 10 ,
+						preferredFormat : "hex" ,
+						move : function ( color ) {} ,
+						show : function () {} ,
+						beforeShow : function () {} ,
+						hide : function ( color ) {} ,
+						palette : [ [ "rgb(0, 0, 0)" ,"rgb(67, 67, 67)" ,"rgb(102, 102, 102)" ,"rgb(153, 153, 153)" ,"rgb(183, 183, 183)" ,"rgb(204, 204, 204)" ,"rgb(217, 217, 217)" ,"rgb(239, 239, 239)" ,"rgb(243, 243, 243)" ,"rgb(255, 255, 255)" ] ,[ "rgb(152, 0, 0)" ,"rgb(255, 0, 0)" ,"rgb(255, 153, 0)" ,"rgb(255, 255, 0)" ,"rgb(0, 255, 0)" ,"rgb(0, 255, 255)" ,"rgb(74, 134, 232)" ,"rgb(0, 0, 255)" ,"rgb(153, 0, 255)" ,"rgb(255, 0, 255)" ] ,[ "rgb(230, 184, 175)" ,"rgb(244, 204, 204)" ,"rgb(252, 229, 205)" ,"rgb(255, 242, 204)" ,"rgb(217, 234, 211)" ,"rgb(208, 224, 227)" ,"rgb(201, 218, 248)" ,"rgb(207, 226, 243)" ,"rgb(217, 210, 233)" ,"rgb(234, 209, 220)" ,"rgb(221, 126, 107)" ,"rgb(234, 153, 153)" ,"rgb(249, 203, 156)" ,"rgb(255, 229, 153)" ,"rgb(182, 215, 168)" ,"rgb(162, 196, 201)" ,"rgb(164, 194, 244)" ,"rgb(159, 197, 232)" ,"rgb(180, 167, 214)" ,"rgb(213, 166, 189)" ,"rgb(204, 65, 37)" ,"rgb(224, 102, 102)" ,"rgb(246, 178, 107)" ,"rgb(255, 217, 102)" ,"rgb(147, 196, 125)" ,"rgb(118, 165, 175)" ,"rgb(109, 158, 235)" ,"rgb(111, 168, 220)" ,"rgb(142, 124, 195)" ,"rgb(194, 123, 160)" ,"rgb(166, 28, 0)" ,"rgb(204, 0, 0)" ,"rgb(230, 145, 56)" ,"rgb(241, 194, 50)" ,"rgb(106, 168, 79)" ,"rgb(69, 129, 142)" ,"rgb(60, 120, 216)" ,"rgb(61, 133, 198)" ,"rgb(103, 78, 167)" ,"rgb(166, 77, 121)" ,"rgb(133, 32, 12)" ,"rgb(153, 0, 0)" ,"rgb(180, 95, 6)" ,"rgb(191, 144, 0)" ,"rgb(56, 118, 29)" ,"rgb(19, 79, 92)" ,"rgb(17, 85, 204)" ,"rgb(11, 83, 148)" ,"rgb(53, 28, 117)" ,"rgb(116, 27, 71)" ,"rgb(91, 15, 0)" ,"rgb(102, 0, 0)" ,"rgb(120, 63, 4)" ,"rgb(127, 96, 0)" ,"rgb(39, 78, 19)" ,"rgb(12, 52, 61)" ,"rgb(28, 69, 135)" ,"rgb(7, 55, 99)" ,"rgb(32, 18, 77)" ,"rgb(76, 17, 48)" ] ]
+					} );
+				} else if ( info.maxByte ) {
+					$node.attr("maxlength",null);
+					$node.parent().append(
+						'<div class="maxlengthTxt">(<span class="len">0</span>/<span class="maxlength">'+$.numberFormat( info.maxByte )+'</span> byte까지 입력 가능(띄어쓰기(0.5글자) 포함)</div>'
+					);
+					var stringByteLength = calByte.getByteLength( $node.val() );
+					$node.parent().find( ".len" ).html( stringByteLength );
+					$( this ).keyup( function ( e ) {
+						var stringByteLength = calByte.getByteLength( $(this).val() );
+						if ( info.maxByte < stringByteLength ) {
+							$(this).val( calByte.cutByteLength( $(this).val(), info.maxByte) );
+							$.alert( "[" + $( this ).attr( "title" ) + "]항목을 " + info.maxByte + "Byte 이내로 입력해주세요.");
+						}
+						$(this).parent().find( ".len" ).html( calByte.getByteLength( $(this).val() ) );
+					} );
+				}
+			} );
+		}
+		/* jw 추가 */
+		$this.find( "select" ).wrap( "<span class='select'></span>" );
+		/*$this.find( "header #gnb" ).append( '<div class="bg_gnb"></div>' );*/
+		$this.find( "header nav" ).prepend( "<h2>주요메뉴</h2>" );
+		$this.find( "header h1" ).addClass( "logo" );
+		/*$this.find( ".sub_gnb_w" ).wrap( '<div class="sub_gnb"></div>' );*/
+		$this.find( ".gnb_list .tit a" ).addClass( "sub_use" );
+		$this.find( ".search_form .detail_box" ).parents( '.search_form' ).addClass( 'detail' );
+		$this.find( ".search_form .det_btn" ).parents( 'li' ).addClass( 'detail_li' );
+		$this.find( ".search_form .btn01" ).parents( 'dl' ).addClass( 'btn_' );
+		$this.find( ".search_form input[type='text']" ).parents( 'dl' ).addClass( 'type1' );
+		$this.find( ".search_form .select" ).parents( 'dl' ).addClass( 'type2' );
+		$this.find( ".search_form .det_btn" ).parents( 'dl' ).addClass( 'type3' );
+		/*$this.find( ".search_box ul li:first-child" ).prepend( '<span class="recommend_ic">추천검색어</span>' );*/
+		$this.find( ".search_form li:last-child select" ).parents( 'dd' ).addClass( 'in_select' );
+		$this.find( ".table_top .btn01" ).parents( '.table_top' ).addClass( 'btn_w' );
+		$this.find( "th.star" ).prepend( '<span class="star">*</span>' );
+		$this.find( ".login_box" ).prepend( '<span class="login_box_ic"></span>' );
+
+
+		/* 테이블 td 클래스 추가*/
+		$this.find( ".title" ).parents( 'td' ).addClass( 'title' );
+		$this.find( ".btn01" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( ".btn02" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( "input" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( "select" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( ".td_box" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( "td img" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( ".surv_w" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( "dl" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( ".td_p1" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( ".COMMON_FILEUPLOAD" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( ".ul_inblock" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( ".files" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( ".surv_w" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( "textarea" ).parents( 'td' ).addClass( 'input_td' );
+		$this.find( ".file_style" ).parents( 'td' ).addClass( 'input_td' );
+
+		$this.find( "th p" ).parents( 'th' ).addClass( 'th_line' );
+		$this.find( ".guide_wrap .btn01" ).parents( '.guide_wrap' ).addClass( 'btn_w' );
+		$this.find( ".set_btn_w" ).append( '<a href="#;" class="set_btn">설정</a>' );
+		$this.find( ".found_li_box .col01" ).parents( '.found_li_box' ).addClass( 'box01' );
+		$this.find( ".found_li_box .col02" ).parents( '.found_li_box' ).addClass( 'box02' );
+		$this.find( "select:disabled" ).parents( 'span' ).addClass( 'select_d' );
+		$this.find( ".tree_wrap .tree_body li ul" ).parents( 'li' ).addClass('on');
+		$this.find( ".tree_wrap .tree_body li.on > dl dt").prepend('<a href="#" class="open_btn">오픈버튼</a>');
+		$this.find( ".cal_week_mon table td ul li" ).parents( 'td' ).addClass( 'mob_block' );
+		$this.find( ".cal_week_con table td ul li" ).parents( 'td' ).addClass( 'mob_block' );
+
+		$this.find( ".cal_week_mon table td .on_day" ).parents( 'td' ).addClass( 'on_day' );
+
+
+
+		$this.find( ".prevnext" ).each( function () {
+			$( this ).find( "li:first a" ).addClass( "btn_prev" );
+			$( this ).find( "li:last a" ).addClass( "btn_next" );
+		} );
+		$this.find( ".page_list" ).each( function () {
+			$( this ).find( "li:first-child" ).addClass( "first_btn" );
+			$( this ).find( "li:nth-child(2)" ).addClass( "prev_btn" );
+			$( this ).find( "li:nth-last-child(2)" ).addClass( "next_btn" );
+			$( this ).find( "li:last-child" ).addClass( "last_btn" );
+		} );
+		$this.find( ".pageList" ).each( function () {
+			$( this ).find( "li:first-child" ).addClass( "first_btn" );
+			$( this ).find( "li:nth-child(2)" ).addClass( "prev_btn" );
+			$( this ).find( "li:nth-last-child(2)" ).addClass( "next_btn" );
+			$( this ).find( "li:last-child" ).addClass( "last_btn" );
+		} );
+		if ( $this.find( ".input_set" ).length ) {
+			$this.find( ".input_set" ).buttonset();
+		};
+		if ( $this.find( ".COMMON_TAB" ).length ) {
+			$this.find( ".COMMON_TAB" ).wrap( $( "<div>" ).addClass( "tab_wrap pb0 pt0" ) ).tabs();
+		}
+		$(".t_list tbody td").each(function(){
+			if(!$(this).html().trim()) $(this).html("-");
+		});
+		$(".t_view tbody td").each(function(){
+			if(!$(this).html().trim()) $(this).html("-");
+		});
+		$("dl dd").each(function(){
+			if(!$(this).html().trim()) $(this).html("-");
+		});
+		$(".pointVal").each(function(){
+			if(!$(this).html().trim()) $(this).html("-");
+		});
+
+		$('.table-div').parents('tr').addClass('subTable');
+		return $this;
+	};
+} )( jQuery );

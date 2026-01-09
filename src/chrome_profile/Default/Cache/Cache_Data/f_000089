@@ -1,0 +1,403 @@
+var showLoding = function () {
+	$( '<div style="text-align:center"><img src="/common/plugin/customTags/images/ico/ajax_loader4.gif" width="100"></div>' ).attr( "id" ,"ajaxLoading" ).addClass( "dialog" ).layout( {
+		"title" : "loading" ,
+		"dialogClass" : "dialog_loading" ,
+		"position" : "center" ,
+		"buttons" : []
+	} );
+};
+var removeLoding = function () {
+	$( "#ajaxLoading" ).dialog( 'destroy' ).remove();
+};
+$.ajaxSetup( {
+	method : 'POST' ,
+	contentType : "application/x-www-form-urlencoded; charset=UTF-8" ,
+	dataType : "json" ,
+	timeout : 1 * 60 * 60 * 1000 ,// 2 hours ,
+	beforeSend : function ( xhr ) {
+		xhr.setRequestHeader( "ajax" ,"true" );
+		if ( this.dataType != "script" ) {
+			showLoding();
+		}
+	} ,
+	error : function ( e ) {
+		removeLoding();
+		$.alert( "서버 요청을 실패하였습니다." );
+	} ,
+	complete : function () {
+		removeLoding();
+	}
+} );
+$.fn.__tabs = $.fn.tabs;
+$.fn.tabs = function ( a ,b ,c ,d ,e ,f ) {
+	var base = location.href.replace( /#.*$/ ,'' );
+	$( 'ul:first>li>a[href^="#"]' ,this ).each( function () {
+		var href = $( this ).attr( 'href' );
+		$( this ).attr( 'href' ,base + href );
+		$( this ).click( function ( e ) {
+			e.preventDefault();
+			if ( location.href != base + href ) {
+				location.href = base + href;
+			}
+		} );
+	} );
+	$( this ).__tabs( a ,b ,c ,d ,e ,f );
+};
+$.ui.dialog.prototype._focusTabbable = function () {};
+( function ( $ ) {
+	$.fn.customTags = function () {
+		var $this = $( this );
+		$this.find( ".NO_RESULT" ).each( function () {
+			var colspan = 0;
+			$.each( $( this ).closest( "table" ).find( "thead tr:first th" ) ,function () {
+				colspan += $( this ).attr( "colspan" ) != null ? $.parseInt( $( this ).attr( "colspan" ) ) : 1;
+			} );
+			$( this ).attr( "colspan" ,colspan ).addClass('load');
+		} );
+		$this.find( "a[href='#']" ).click( function ( e ) {
+			e.preventDefault();
+		} );
+		$this.find( "input[type='text'],textarea" ).attr( {
+			"placeholder" : function () {
+				if ( $( this ).attr( "placeholder" ) != null ) return $( this ).attr( "placeholder" );
+				return $( this ).attr( "title" );
+			}
+		} );
+		$this.find( "form" ).each( function ( e ) {
+			var $form = $( this );
+			if ( $.nvl( $form.attr( "id" ) ,"" ).match( /(.+)Search$/ ) || $.nvl( $form.attr( "name" ) ,"" ).match( /(.+)Search$/ ) || $form.attr( "id" ) == "loginForm" ) {
+				$form.find( ":input" ).keypress( function ( e ) {
+					if ( e.keyCode == 13 ) {
+						if ( !$form.validate() ) return;
+						$form.submit();
+					}
+				} );
+			} else {
+				$form.attr( "onsubmit" ,"return false;" );
+			}
+		} );
+		$this.find( "table thead input[type='checkbox']" ).change( function ( e ) {
+			e.preventDefault();
+			$( this ).closest( "table" ).find( "tbody input[type='checkbox']" ).prop( "checked" ,$( this ).prop( "checked" ) );
+		} );
+		/*$this.find( "select" ).wrap( "<span class='select'></span>" );*/
+		$( this ).find( "table" ).find( ":input" ).each( function () {
+			if ( $( this ).classData().required && $( this ).closest( "td" ).prev().is( "th" ) && !$( this ).closest( "td" ).prev().find( "span.required.red" ).length ) {
+				$( this ).closest( "td" ).prev().append( '<span class="required red">*</span>\r\n' );
+			}
+		} );
+		$( "form[autocomplete='on']" ).find( ":input" ).each( function () {
+			var $this = $( this );
+			if ( !$this.attr( "name" ) ) return;
+			if ( ( $this.val() && !$this.is( ":radio" ) && !$this.is( ":checkbox" ) ) ) return;
+			if ( $this.is( "input[type='text'],textarea" ) ) {
+				if ( $this.classData().ime == "num" ) {
+					$this.val( "10" );
+				} else if ( $this.classData().ime == "email" ) {
+					$this.val( "usrpark@gmail.com" );
+				} else if ( $this.classData().ime == "tel" ) {
+					$this.val( "010-1111-2222" );
+				} else if ( $this.classData().ime == "date" ) {
+					$this.val( "2017.03.09" );
+				} else if ( $this.classData().ime == "dateHHmm" ) {
+					$this.val( "2017.03.09 00:00" );
+				} else if ( $this.classData().ime == "domain" ) {
+					$this.val( "http://naver.com" );
+				} else if ( $this.classData().ime == "custmNb" ) {
+					$this.val( "123-12-12345" );
+				} else {
+					$this.val( "2" );
+				}
+			} else if ( $this.is( "select" ) ) {
+				$this.find( "option:last" ).prop( "selected" ,true );
+			} else {
+				if ( !$this.parents( "form" ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + "):checked" ).length ) {
+					$this.parents( "form" ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + "):first" ).prop( "checked" ,true );
+				}
+			}
+		} );
+		$this.find( "table,ul,ol,select,input" ).each( function () {
+			if ( $( this ).is( "table" ) ) {
+				$( this ).find( "thead,tbody" ).find( "tr:first-child" ).addClass( "first" );
+				$( this ).find( "thead,tbody" ).find( "tr:last-child" ).addClass( "last" );
+				$( this ).find( "td:first-child,th:first-child" ).addClass( "first" );
+				$( this ).find( "td:last-child,th:last-child" ).addClass( "last" );
+			} else if ( $( this ).is( "ul" ) || $( this ).is( "ol" ) ) {
+				$( this ).find( "li:first" ).addClass( "first" );
+				$( this ).find( "li:last" ).addClass( "last" );
+			}
+		} );
+		$this.find( ".imageView" ).click( function ( e ) {
+			e.preventDefault();
+			var src = $( this ).data( "src" );
+			$.imageView( src );
+		} );
+		if ( $this.find( ".colorpickerInput" ).length ) {
+			$this.find( ".colorpickerInput" ).each( function () {
+				$( this ).spectrum( {
+					flat : true ,
+					showInput : true ,
+					className : "full-spectrum" ,
+					showInitial : true ,
+					showPalette : true ,
+					showButtons : false ,
+					showSelectionPalette : true ,
+					maxPaletteSize : 10 ,
+					preferredFormat : "hex" ,
+					move : function ( color ) {} ,
+					show : function () {} ,
+					beforeShow : function () {} ,
+					hide : function ( color ) {} ,
+					palette : [ [ "rgb(0, 0, 0)" ,"rgb(67, 67, 67)" ,"rgb(102, 102, 102)" ,"rgb(153, 153, 153)" ,"rgb(183, 183, 183)" ,"rgb(204, 204, 204)" ,"rgb(217, 217, 217)" ,"rgb(239, 239, 239)" ,"rgb(243, 243, 243)" ,"rgb(255, 255, 255)" ] ,[ "rgb(152, 0, 0)" ,"rgb(255, 0, 0)" ,"rgb(255, 153, 0)" ,"rgb(255, 255, 0)" ,"rgb(0, 255, 0)" ,"rgb(0, 255, 255)" ,"rgb(74, 134, 232)" ,"rgb(0, 0, 255)" ,"rgb(153, 0, 255)" ,"rgb(255, 0, 255)" ] ,[ "rgb(230, 184, 175)" ,"rgb(244, 204, 204)" ,"rgb(252, 229, 205)" ,"rgb(255, 242, 204)" ,"rgb(217, 234, 211)" ,"rgb(208, 224, 227)" ,"rgb(201, 218, 248)" ,"rgb(207, 226, 243)" ,"rgb(217, 210, 233)" ,"rgb(234, 209, 220)" ,"rgb(221, 126, 107)" ,"rgb(234, 153, 153)" ,"rgb(249, 203, 156)" ,"rgb(255, 229, 153)" ,"rgb(182, 215, 168)" ,"rgb(162, 196, 201)" ,"rgb(164, 194, 244)" ,"rgb(159, 197, 232)" ,"rgb(180, 167, 214)" ,"rgb(213, 166, 189)" ,"rgb(204, 65, 37)" ,"rgb(224, 102, 102)" ,"rgb(246, 178, 107)" ,"rgb(255, 217, 102)" ,"rgb(147, 196, 125)" ,"rgb(118, 165, 175)" ,"rgb(109, 158, 235)" ,"rgb(111, 168, 220)" ,"rgb(142, 124, 195)" ,"rgb(194, 123, 160)" ,"rgb(166, 28, 0)" ,"rgb(204, 0, 0)" ,"rgb(230, 145, 56)" ,"rgb(241, 194, 50)" ,"rgb(106, 168, 79)" ,"rgb(69, 129, 142)" ,"rgb(60, 120, 216)" ,"rgb(61, 133, 198)" ,"rgb(103, 78, 167)" ,"rgb(166, 77, 121)" ,"rgb(133, 32, 12)" ,"rgb(153, 0, 0)" ,"rgb(180, 95, 6)" ,"rgb(191, 144, 0)" ,"rgb(56, 118, 29)" ,"rgb(19, 79, 92)" ,"rgb(17, 85, 204)" ,"rgb(11, 83, 148)" ,"rgb(53, 28, 117)" ,"rgb(116, 27, 71)" ,"rgb(91, 15, 0)" ,"rgb(102, 0, 0)" ,"rgb(120, 63, 4)" ,"rgb(127, 96, 0)" ,"rgb(39, 78, 19)" ,"rgb(12, 52, 61)" ,"rgb(28, 69, 135)" ,"rgb(7, 55, 99)" ,"rgb(32, 18, 77)" ,"rgb(76, 17, 48)" ] ]
+				} );
+			} );
+		}
+		$this.find( ".stdtInfo" ).click( function ( e ) {
+			e.preventDefault();
+			var params = $( this ).data( "params" );
+			$.stdtInfo( params.stuid );
+		} );
+		$this.find( ".empInfo" ).click( function ( e ) {
+			e.preventDefault();
+			var params = $( this ).data( "params" );
+			$.empInfo( params.empid );
+		} );
+		if ( $this.find( ".COMMON_SORTABLE" ).not( ".ui-sortable" ).length ) {
+			$this.find( ".COMMON_SORTABLE" ).not( ".ui-sortable" ).sortable( {
+				axis : "y" ,
+				handle : ".moveLabel" ,
+				placeholder : "placeholder" ,
+				sort : function () {
+					$( this ).find( 'li.placeholder' ).css( 'height' ,$( this ).find( 'li' ).outerHeight() );
+				} ,
+				update : function () {
+					$( this ).closest( "ul" ).find( "li" ).removeClass( "first" ).removeClass( "last" );
+					$( this ).closest( "ul" ).find( "li:first" ).addClass( "first" );
+					$( this ).closest( "ul" ).find( "li:last" ).addClass( "last" );
+				}
+			} );
+		}
+		$this.find( ".COMMON_FILEUPLOAD" ).not( ".hasCommonFileupload" ).each( function () {
+			var list = $( this ).html() ? $.JSONEncode( $( this ).html() ) : null;
+			$( this ).empty();
+			var info = $( this ).data( "params" );
+			info = $.extend( info ,{
+				url : "/common/cmnFile/upload.do" ,
+				dragDrop : false ,
+				returnType : "json" ,
+				allowedTypes : info.allowedTypes ? info.allowedTypes : '*' ,
+				maxFileSize : info.maxFileSize ? info.maxFileSize * 1024 * 1024 : -1 ,
+				limitFileSize : info.limitFileSize ? info.limitFileSize * 1024 * 1024 : -1 ,
+				list : list ,
+				showDelete : true ,
+				showDone : false ,
+				onSubmit : function ( files ) {} ,
+				onSuccess : function ( files ,data ,xhr ) {} ,
+				afterUploadAll : function () {} ,
+				onError : function ( files ,status ,errMsg ) {}
+			} );
+			$( this ).append( "<div class='layout'>" + info.title + "</div>" );
+			$( this ).find( ".layout" ).uploadFile( info );
+			$( this ).addClass( "hasCommonFileupload" ).show();
+		} );
+		if ( $this.find( "[class*=\\{][class*=\\}]" ).length ) {
+			$this.find( "[class*=\\{][class*=\\}]" ).each( function () {
+				$node = $( this );
+				if ( $node.get( 0 ).disabled ) return true;
+				var info = $.JSONEncode( $node.attr( "class" ).replace( /(.+)?(\{.+\})(.+)?/ ,"$2" ) );
+				if ( info.maxlength ) {
+					$node.attr( "maxlength" ,info.maxlength );
+				}
+				if ( info.ime == "tel" ) {
+					$node.change( function () {
+						if ( $( this ).parents( "form" ).attr( "lang" ) != "en" ) {
+							$( this ).val( $.telFormat( $( this ).val() ) );
+						}
+					} ).change();
+					$node.keydown( function () {
+						if ( ( event.keyCode < 48 || event.keyCode > 57 ) && ( event.keyCode < 96 || event.keyCode > 105 ) && event.keyCode != 8 && event.keyCode != 9 || event.shiftKey ) { return false; }
+					} );
+				} else if ( info.ime == "custmNb" ) {
+					$node.change( function () {
+						if ( $( this ).parents( "form" ).attr( "lang" ) != "en" ) {
+							$( this ).val( $.custmNbFormat( $( this ).val() ) );
+						}
+					} ).change();
+					$node.keydown( function () {
+						if ( ( event.keyCode < 48 || event.keyCode > 57 ) && ( event.keyCode < 96 || event.keyCode > 105 ) && event.keyCode != 8 && event.keyCode != 9 || event.shiftKey ) { return false; }
+					} );
+				} else if ( info.ime == "num" ) {
+					$node.attr( "placeholder" ,"0" );
+					$node.css( {
+						"text-align" : "center"
+					} );
+					$node.keydown( function () {
+						if ( ( event.keyCode < 48 || event.keyCode > 57 ) && ( event.keyCode < 96 || event.keyCode > 105 ) && event.keyCode != 8 && event.keyCode != 9 || event.shiftKey ) { return false; }
+					} );
+				} else if ( info.ime == "price" ) {
+					$node.css( {
+						"text-align" : "right"
+					} );
+					$node.keydown( function () {
+						if ( ( event.keyCode < 48 || event.keyCode > 57 ) && ( event.keyCode < 96 || event.keyCode > 105 ) && event.keyCode != 8 && event.keyCode != 9 || event.shiftKey ) { return false; }
+					} );
+					$node.change( function () {
+						$( this ).val( $.numberFormat( $( this ).val() ) );
+					} ).change();
+				} else if ( info.ime == "float" ) {
+					$node.css( {
+						"text-align" : "center"
+					} );
+					$node.keydown( function () {
+						if ( ( event.keyCode < 48 || event.keyCode > 57 ) && ( event.keyCode < 96 || event.keyCode > 105 ) && event.keyCode != 8 && event.keyCode != 190 & event.keyCode != 110 && event.keyCode != 9 || event.shiftKey ) { return false; }
+					} );
+				} else if ( info.ime == "time" ) {
+					$node.css( {
+						"text-align" : "center" ,
+						"width" : "100px"
+					} ).timepicker( {
+						'minTime' : '09:00am' ,
+						'maxTime' : '18:00pm' ,
+						'timeFormat' : 'H:i'
+					} ).attr( "placeholder" ,"HH:mm" ).addClass( "hasTimepicker" );
+				} else if ( info.ime == "hh" ) {
+					$node.css( {
+						"text-align" : "center" ,
+						"width" : "80px"
+					} ).timepicker( {
+						'minTime' : '00' ,
+						'maxTime' : '23' ,
+						'timeFormat' : 'H',
+						'step' : '60'
+					} ).attr( "placeholder" ,"HH" ).addClass( "hasTimepicker" );
+				} else if ( info.ime == "min" ) {
+					$node.css( {
+						"text-align" : "center" ,
+						"width" : "80px"
+					} ).timepicker( {
+						'minTime' : '00' ,
+						'maxTime' : '01' ,
+						'timeFormat' : 'i',
+						'step' : '1'
+					} ).attr( "placeholder" ,"mm" ).addClass( "hasTimepicker" );
+				} else if ( info.ime == "date" ) {
+					$node.attr( "placeholder" ,"yyyy.MM.dd" );
+					$node.datepicker( {
+						monthNames : [ '1월' ,'2월' ,'3월' ,'4월' ,'5월' ,'6월' ,'7월' ,'8월' ,'9월' ,'10월' ,'11월' ,'12월' ] ,
+						dayNames : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNamesShort : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNamesMin : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNames : [ '일요일' ,'월요일' ,'화요일' ,'수요일' ,'목요일' ,'금요일' ,'토요일' ] ,
+						dateFormat : 'yy.mm.dd' ,
+						showMonthAfterYear : true ,
+						yearSuffix : '년' ,
+						autoSize : false ,
+						changeYear : true ,
+						changeMonth: true,
+						yearRange : 'c-80:c+2' ,
+						showAnim : '' ,
+						minDate : info.minDate ? info.minDate : null ,
+						maxDate : info.maxDate ? info.maxDate : null
+					} );
+					if ( info.maxDateTarget && $( info.maxDateTarget ) ) {
+						$node.datepicker( "option" ,"maxDate" ,$( info.maxDateTarget ).val() );
+						$node.datepicker( "option" ,"onClose" ,function ( selectedDate ) {
+							$( info.maxDateTarget ).datepicker( "option" ,"minDate" ,selectedDate );
+						} );
+					}
+					if ( info.minDateTarget && $( info.minDateTarget ) ) {
+						$node.datepicker( "option" ,"minDate" ,$( info.minDateTarget ).val() );
+						$node.datepicker( "option" ,"onClose" ,function ( selectedDate ) {
+							$( info.minDateTarget ).datepicker( "option" ,"maxDate" ,selectedDate );
+						} );
+					}
+				} else if ( info.ime == "dateHHmm" ) {
+					$node.addClass( "hasDatetimepicker" ).datetimepicker( {
+						monthNames : [ '1월' ,'2월' ,'3월' ,'4월' ,'5월' ,'6월' ,'7월' ,'8월' ,'9월' ,'10월' ,'11월' ,'12월' ] ,
+						dayNames : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNamesShort : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNamesMin : [ '일' ,'월' ,'화' ,'수' ,'목' ,'금' ,'토' ] ,
+						dayNames : [ '일요일' ,'월요일' ,'화요일' ,'수요일' ,'목요일' ,'금요일' ,'토요일' ] ,
+						dateFormat : 'yy.mm.dd' ,
+						changeYear : true ,
+						changeMonth: true,
+						yearRange : 'c-250:c+2' ,
+						showAnim : '' ,
+						showSecond : false ,
+						timeFormat : 'HH:mm' ,
+						stepHour : 1 ,
+						controlType : 'select' ,
+						oneLine : true ,
+						stepMinute : 1
+					} );
+					$node.attr( "placeholder" ,"yyyy.MM.dd hh:mm" );
+				}
+			} );
+		}
+		/* jw 추가 */
+		
+		
+		$this.find( ".footer_wrap" ).wrap( '<footer></footer>' );
+		$this.find( ".art_wrap" ).wrap( '<article class="h3_basis"></article>' );
+		$this.find( ".h3_basis" ).prepend( "<h3>.</h3>" );
+		$this.find( ".header_box" ).append( '<div class="bg_gnb"></div>' );
+		$this.find( ".bg_gnb" ).append( '<div class="bg_gnb_box"></div>' );
+		$this.find( ".header_d h1" ).addClass( "logo" );
+		$this.find( ".login_box_d" ).wrap( '<div class="login_box_wrap"></div>' );
+		/* $this.find( ".tableType04 .td_box img" ).wrap('<a href="#" target="_blank"></a>'); */
+		$this.find( ".search_box_d" ).wrap( '<div class="search_box_wrap"></div>' );
+		$this.find( ".table" ).wrap( '<div class="table_wrap"></div>' );
+		$this.find( ".subGnb_w" ).wrap( '<div class="subGnb"></div>' );
+		$this.find( ".gnbList .tit a" ).addClass( "subUse" );
+		$this.find( ".search_form" ).wrap( '<div class="search_form_wrap"></div>' );
+		$this.find( ".search_box_d ul li:first-child" ).prepend( '<span class="recommend_ic">추천검색어</span>' );
+		$this.find( ".checkbox_style" ).wrap( '<div class="COMM_RADIOSET"></div>' );
+		$this.find( ".radio_style" ).wrap( '<div class="COMM_RADIOSET"></div>' );
+		$this.find( ".radio_style2" ).wrap( '<div class="COMM_RADIOSET"></div>' );
+		$this.find( "th.star" ).append( '<span class="star">*</span>' );
+		$this.find( ".login_box" ).prepend( '<span class="login_box_ic"></span>' );
+		$this.find( "table td .btn01" ).parents( 'td' ).addClass( 'td_btn' );
+		$this.find( ".tableType01 td .title" ).parents( 'td' ).addClass( 'title' );
+		$this.find( ".tableType01 td.title" ).addClass( 'td_btn' );
+		$this.find( ".tableType01 td .select" ).parents( 'td' ).addClass( 'td_btn' );
+		$this.find( ".tableType01 th p" ).parents( 'th' ).addClass( 'th_line2' );
+		$this.find( ".table.t_list td input" ).parents( 'td' ).addClass( 'td_btn' );
+		$this.find( ".tableType04 td select" ).parents( 'td' ).addClass( 'td_input' );
+		$this.find( ".tableType04 td input" ).parents( 'td' ).addClass( 'td_input' );
+		$this.find( ".tableType04 td textarea" ).parents( 'td' ).addClass( 'td_input' );
+		$this.find( ".tableType01 table td input" ).parents( 'td' ).addClass( 'td_input' );
+		$this.find( ".table td .checkbox_style" ).parents( 'td' ).addClass( 'td_input' );
+		$this.find( ".table td .radio_style2" ).parents( 'td' ).addClass( 'td_input' );
+		$this.find( ".table td .hasDatepicker" ).parents( 'td' ).addClass( 'td_input2' );
+		$this.find( ".table td dl" ).parents( 'td' ).addClass( 'td_input2' );
+		$this.find( ".table td textarea" ).parents( 'td' ).addClass( 'td_input2' );
+		$this.find( "table td .COMM_RADIOSET" ).parents( 'td' ).addClass( 'td_input' );
+		$this.find( ".main_wrap" ).parents( '.wrap' ).addClass( 'main_top' );
+		$this.find( ".main_wrap" ).parents( 'body' ).addClass( 'main_left' );
+		$this.find( ".main_wrap" ).parents( 'html' ).addClass( 'main_bg' );
+		$this.find( "#print" ).parents( 'html' ).addClass( 'pring_w' );
+		$this.find( ".tree_wrap .tree_body li ul" ).parents( 'li' ).addClass( 'on' );
+		$this.find( ".tree_wrap .tree_body li.on > dl dt" ).prepend( '<a href="#" class="open_btn">오픈버튼</a>' );
+		$this.find( ".table td .file_style" ).parents( 'td' ).addClass( 'td_input2' );
+		$this.find( ".prevnext" ).each( function () {
+			$( this ).find( "li:first a" ).addClass( "btn_prev" );
+			$( this ).find( "li:last a" ).addClass( "btn_next" );
+		} );
+		$this.find( ".pageList" ).each( function () {
+			$( this ).find( "li:first-child" ).addClass( "first_btn" );
+			$( this ).find( "li:nth-child(2)" ).addClass( "prev_btn" );
+			$( this ).find( "li:nth-last-child(2)" ).addClass( "next_btn" );
+			$( this ).find( "li:last-child" ).addClass( "last_btn" );
+		} );
+		if ( $this.find( ".input_set" ).length ) {
+			$this.find( ".input_set" ).buttonset();
+		};
+		if ( $this.find( ".COMM_RADIOSET" ).length ) {
+			$this.find( ".COMM_RADIOSET" ).buttonset();
+		}
+		if ( $this.find( ".COMMON_TAB" ).length ) {
+			$this.find( ".COMMON_TAB" ).wrap( $( "<div>" ).addClass( "tab_wrap pb0 pt0" ) ).tabs();
+		}
+		return $this;
+	};
+} )( jQuery );

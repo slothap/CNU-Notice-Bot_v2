@@ -1,0 +1,713 @@
+var global = {
+	isMobile : false ,
+	contextPath : "" ,
+	realDev : ""
+};
+( function ( $ ) {
+	/* [YK] 상담 멀티 신분 내담자 정보 처리 */
+	$.multiInfo = function ( id ,userCd ) {
+		var $userCdVal = '0001';
+		if ( userCd ) {
+			$userCdVal = userCd;
+		}
+		if ( $userCdVal == '0001' ) {
+			$.stdtInfo( id );
+		} else {
+			console.log( "!!그 외의 경우 " );
+			var params = {
+				"id" : id ,
+				"userCd" : $userCdVal
+			}
+			$.ajax( {
+				"url" : global.contextPath + "/ex/dialog/findMultiUserInfo.do" ,
+				"dataType" : "text" ,
+				"data" : params ,
+				"success" : function ( text ) {
+					var $html = $( text );
+					$html.layout( {
+						"title" : "내담자 상세정보" ,
+						"width" : 800
+					} );
+				}
+			} );
+		}
+	};
+	$.cuslEmpInfo = function ( params ) {
+		$.ajax( {
+			"url" : global.contextPath + "/common/cuslSched/dialog/findCuslEmpInfo.do" ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( text ) {
+				var $html = $( text );
+				$html.layout( {
+					"title" : "상담자 상세정보" ,
+					"width" : 800
+				} );
+			}
+		} );
+	};
+	$.empInfo = function ( empid ) {
+		$.ajax( {
+			"url" : global.contextPath + "/ex/dialog/findEmpInfo.do" ,
+			"dataType" : "text" ,
+			"data" : {
+				"empid" : empid
+			} ,
+			"success" : function ( text ) {
+				var $html = $( text );
+				$html.layout( {
+					"title" : "교직원 상세정보" ,
+					"width" : 800
+				} );
+			}
+		} );
+	};
+	$.intlNsbjtSearch = function ( action ,params ) {
+		if ( !params ) {
+			params = {
+				"paginationInfo.currentPageNo" : 1
+			};
+		}
+		$.ajax( {
+			"url" : global.contextPath + "/common/dialog/findIntlNsbjtSearchList.do" ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( result ) {
+				var $intlNsbjtSearch = $( result );
+				$intlNsbjtSearch.attr( "id" ,"intl_nsbjt_search_layout" ).layout( {
+					"width" : 1280 ,
+					"title" : "교내비교과 프로그램 매칭(연결) 관리" ,
+					"create" : function () {
+						$intlNsbjtSearch.find( "form" ).submit( function () {
+							return false;
+						} );
+						$intlNsbjtSearch.find( "[type='text']" ).keypress( function ( e ) {
+							if ( e.keyCode == 13 ) {
+								$.intlNsbjtSearch( action ,$.extend( $intlNsbjtSearch.find( "form" ).params() ,{
+									"paginationInfo.currentPageNo" : 1
+								} ) );
+							}
+						} );
+						$intlNsbjtSearch.find( "#dialogSearchBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.intlNsbjtSearch( action ,$.extend( $intlNsbjtSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1
+							} ) );
+						} );
+						$intlNsbjtSearch.find( "#dialogResetBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.intlNsbjtSearch( action ,$.extend( $intlNsbjtSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1 ,
+								"searchValue" : ""
+							} ) );
+						} );
+						$intlNsbjtSearch.find( ".movePage a" ).click( function ( e ) {
+							e.preventDefault();
+							var page = $( this ).data( "params" );
+							$.intlNsbjtSearch( action ,$.extend( $intlNsbjtSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : page
+							} ) );
+						} );
+						$intlNsbjtSearch.find( ".selectBtn" ).click( function ( e ) {
+							e.preventDefault();
+							action( $( this ).data( "params" ) );
+							$intlNsbjtSearch.dialog( 'destroy' ).remove();
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	$.exSubjBasLstSearch = function ( action ,params ) {
+		if ( !params ) {
+			params = {
+				"paginationInfo.currentPageNo" : 1
+			};
+		}
+		$.ajax( {
+			"url" : global.contextPath + "/common/dialog/findExSubjBasLstSearchList.do" ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( result ) {
+				var $exSubjBasLstSearch = $( result );
+				$exSubjBasLstSearch.attr( "id" ,"intl_nsbjt_search_layout" ).layout( {
+					"width" : 1280 ,
+					"title" : "교과목 검색" ,
+					"create" : function () {
+						$exSubjBasLstSearch.find( "form" ).submit( function () {
+							return false;
+						} );
+						$exSubjBasLstSearch.find( "[type='text']" ).keypress( function ( e ) {
+							if ( e.keyCode == 13 ) {
+								$.exSubjBasLstSearch( action ,$.extend( $exSubjBasLstSearch.find( "form" ).params() ,{
+									"paginationInfo.currentPageNo" : 1
+								} ) );
+							}
+						} );
+						$exSubjBasLstSearch.find( "#dialogSearchBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.exSubjBasLstSearch( action ,$.extend( $exSubjBasLstSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1
+							} ) );
+						} );
+						$exSubjBasLstSearch.find( "#dialogResetBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.exSubjBasLstSearch( action ,$.extend( $exSubjBasLstSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1 ,
+								"searchValue" : ""
+							} ) );
+						} );
+						$exSubjBasLstSearch.find( ".movePage a" ).click( function ( e ) {
+							e.preventDefault();
+							var page = $( this ).data( "params" );
+							$.exSubjBasLstSearch( action ,$.extend( $exSubjBasLstSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : page
+							} ) );
+						} );
+						$exSubjBasLstSearch.find( ".selectBtn" ).click( function ( e ) {
+							e.preventDefault();
+							action( $( this ).data( "params" ) );
+							$exSubjBasLstSearch.dialog( 'destroy' ).remove();
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	$.outsiNsbjtBasSearch = function ( action ,params ) {
+		if ( !params ) {
+			params = {
+				"paginationInfo.currentPageNo" : 1
+			};
+		}
+		$.ajax( {
+			"url" : global.contextPath + "/common/dialog/findOutsiNsbjtBasSearchList.do" ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( result ) {
+				var $outsiNsbjtBasSearch = $( result );
+				$outsiNsbjtBasSearch.attr( "id" ,"intl_nsbjt_search_layout" ).layout( {
+					"width" : 1280 ,
+					"title" : "외부비교과 프로그램 매칭(연결) 관리" ,
+					"create" : function () {
+						$outsiNsbjtBasSearch.find( "form" ).submit( function () {
+							return false;
+						} );
+						$outsiNsbjtBasSearch.find( "[type='text']" ).keypress( function ( e ) {
+							if ( e.keyCode == 13 ) {
+								$.outsiNsbjtBasSearch( action ,$.extend( $outsiNsbjtBasSearch.find( "form" ).params() ,{
+									"paginationInfo.currentPageNo" : 1
+								} ) );
+							}
+						} );
+						$outsiNsbjtBasSearch.find( "#dialogSearchBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.outsiNsbjtBasSearch( action ,$.extend( $outsiNsbjtBasSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1
+							} ) );
+						} );
+						$outsiNsbjtBasSearch.find( "#dialogResetBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.outsiNsbjtBasSearch( action ,$.extend( $outsiNsbjtBasSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1 ,
+								"searchValue" : ""
+							} ) );
+						} );
+						$outsiNsbjtBasSearch.find( ".movePage a" ).click( function ( e ) {
+							e.preventDefault();
+							var page = $( this ).data( "params" );
+							$.outsiNsbjtBasSearch( action ,$.extend( $outsiNsbjtBasSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : page
+							} ) );
+						} );
+						$outsiNsbjtBasSearch.find( ".selectBtn" ).click( function ( e ) {
+							e.preventDefault();
+							action( $( this ).data( "params" ) );
+							$outsiNsbjtBasSearch.dialog( 'destroy' ).remove();
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	$.stdtInfoT = function ( stuid, popType, currentPageNo, index ) {
+		var params = {
+			"stuid" : stuid ,
+			"popType" : ( popType == undefined ? '0001' : popType ),
+			"currentPageNo" : currentPageNo
+		}
+		/*if (index == '0') {
+			var params = {
+				"stuid" : stuid ,
+				"popType" : ( popType == undefined ? '0001' : popType ),
+				"currentPageNo1" : currentPageNo
+			}
+		} else if (index == '1') {
+			var params = {
+				"stuid" : stuid ,
+				"popType" : ( popType == undefined ? '0001' : popType ),
+				"currentPageNo2" : currentPageNo
+			}
+		};*/
+
+		var $mainBody = $("#body");
+		$mainBody.submitAjax( {
+			"dataType" : "text" ,
+			"data" : params ,
+			"url" : "/ex/popup/findStdtInfo.do" ,
+			"success" : function ( result ) {
+				$( '#body' ).html( result );
+			}
+		} );
+		$(".loading_box").remove();
+	};
+
+
+
+
+
+	$.stdtInfo = function ( stuid ,popType ) {
+		var params = {
+			"stuid" : stuid ,
+			"popType" : ( popType == undefined ? '0001' : popType )
+		}
+		$.openWindow( {
+			"url" : global.contextPath + "/ex/popup/findStdtInfo.do" ,
+			"width" : "1500" ,
+			"layout" : "resizable=yes, toolbar=no, menubar=no, location=no, status=no, scrollbars=yes" ,
+			params : params
+		} );
+		/*
+		 * $.ajax( { "url" : global.contextPath + "/ex/dialog/findStdtInfo.do" , "dataType" : "text" , "data" : { "stuid" : stuid } , "success" : function ( text ) { var $stdtInfo = $( text ); $stdtInfo.customTags(); $stdtInfo.layout( { "title" : "학생 상세정보" , "width" : 1280 , "create" : function () { ( function () { var $chart_203 = $stdtInfo.find( "#chart_203" ); if ( !$chart_203.length ) return; var my = $chart_203.data( "my" ); var chart; var chartData = [ { "direction" : "성실성" , "value1" : $.parseFloat( my.qitm1Avg ) } ,{ "direction" : "소통역량" , "value1" : $.parseFloat( my.qitm2Avg ) } ,{ "direction" : "창의역량" , "value1" : $.parseFloat( my.qitm3Avg ) } ,{ "direction" : "종합적사고력" , "value1" : $.parseFloat( my.qitm4Avg ) } ,{ "direction" : "주도성" , "value1" : $.parseFloat( my.qitm5Avg ) } ,{ "direction" : "글로벌\n시민의식" , "value1" : $.parseFloat( my.qitm6Avg ) } ]; chart = new AmCharts.AmRadarChart(); chart.dataProvider = chartData; chart.categoryField = "direction"; var valueAxis = new AmCharts.ValueAxis(); valueAxis.fillAlpha = 0; valueAxis.fillColor = "#838383"; valueAxis.axisAlpha = 0.2; valueAxis.gridAlpha = 0.2; valueAxis.align = "center"; valueAxis.fontSize = 10; valueAxis.color = "#838383"; valueAxis.fontFamily = "dotum"; valueAxis.minimum = 0; valueAxis.maximum = 5; chart.addValueAxis( valueAxis ); var graph = new AmCharts.AmGraph(); graph.lineColor = "#1d9fd5"; graph.title = "최근역량"; graph.fillAlphas = 0.1; graph.lineThickness = 3; graph.bullet = "round"; graph.valueField = "value1"; graph.balloonText = "[[category]] [[value1]]"; chart.addGraph( graph ); chart.write( $chart_203.attr( "id" ) ); } )(); var findStdtCuslDscLstList = function ( params ) { $.ajax( { "url" : global.contextPath + "/ex/dialog/findStdtCuslDscLstList.do" , "dataType" : "text" , "data" : params , "success" : function ( text ) { $stdtInfo.find( "#stdtInfoTabCon8List" ).hide().html( $( text ).find( ".cont" ).html() ).customTags().fadeIn(); } } ); }; $stdtInfo.submit( function () { return false; } ); $stdtInfo.find( "[type='text']" ).keypress( function ( e ) { if ( e.keyCode == 13 ) { findStdtCuslDscLstList( $.extend( $stdtInfo.find( "form" ).params() ,{ "paginationInfo.currentPageNo" : 1 } ) ); } } ); $stdtInfo.on( "click" ,"#dialogSearchBtn" ,function ( e ) { e.preventDefault(); findStdtCuslDscLstList( $.extend( $stdtInfo.find( "form" ).params() ,{ "paginationInfo.currentPageNo" : 1 } ) ); } ); $stdtInfo.on( "click" ,"#dialogResetBtn" ,function ( e ) { e.preventDefault(); findStdtCuslDscLstList( $.extend( $stdtInfo.find( "form" ).params() ,{ "paginationInfo.currentPageNo" : 1 , "searchValue" : "" } ) ); } ); $stdtInfo.on( "click" ,".movePage a" ,function ( e ) { e.preventDefault(); var page = $( this ).data( "params" ); findStdtCuslDscLstList( $.extend( $stdtInfo.find( "form" ).params() ,{ "paginationInfo.currentPageNo" : page } ) ); } ); } } ); } } );
+		 */
+	};
+	$.stdtInfo2 = function ( stuid ) {
+		var params = {
+			"stuid" : stuid
+		}
+		$.openWindow( {
+			"url" : global.contextPath + "/ex/popup/findStdtInfo.do" ,
+			"width" : "1500" ,
+			params : params
+		} );
+	};
+	$.stdtRsm = function ( sprbSeq ,stuid ) {
+		var params = {
+			"sprbSeq" : sprbSeq ,
+			"stuid" : stuid
+		}
+		$.openWindow( {
+			"url" : global.contextPath + "/ex/popup/stdtRsm.do" ,
+			"width" : "1500" ,
+			params : params
+		} );
+	};
+	$.stdtSfIntroForm = function ( spsidbSeq ,stuid ) {
+		var params = {
+			"spsidbSeq" : spsidbSeq ,
+			"stuid" : stuid
+		}
+		$.openWindow( {
+			"url" : global.contextPath + "/ex/popup/stdtSfIntroForm.do" ,
+			"width" : "1500" ,
+			params : params
+		} );
+	};
+	$.empSearch = function ( action ,params ) {
+		if ( !params ) {
+			params = {
+				"paginationInfo.currentPageNo" : 1
+			};
+		}
+		$.ajax( {
+			"url" : global.contextPath + "/ex/dialog/findEmpSearchList.do" ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( result ) {
+				var $empSearch = $( result );
+				$empSearch.attr( "id" ,"emp_search_layout" ).layout( {
+					"width" : 1280 ,
+					"title" : "교직원검색" ,
+					"create" : function () {
+						$empSearch.submit( function () {
+							return false;
+						} );
+						$empSearch.find( "[type='text']" ).keypress( function ( e ) {
+							if ( e.keyCode == 13 ) {
+								$.empSearch( action ,$.extend( $empSearch.find( "form" ).params() ,{
+									"paginationInfo.currentPageNo" : 1
+								} ) );
+							}
+						} );
+						$empSearch.find( "#dialogSearchBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.empSearch( action ,$.extend( $empSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1
+							} ) );
+						} );
+						$empSearch.find( "#dialogResetBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.empSearch( action ,$.extend( $empSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1 ,
+								"searchValue" : ""
+							} ) );
+						} );
+						$empSearch.find( ".movePage a" ).click( function ( e ) {
+							e.preventDefault();
+							var page = $( this ).data( "params" );
+							$.empSearch( action ,$.extend( $empSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : page
+							} ) );
+						} );
+						$empSearch.find( ".selectBtn" ).click( function ( e ) {
+							e.preventDefault();
+							action( $( this ).data( "params" ) );
+							$empSearch.dialog( 'destroy' ).remove();
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	$.stdtSearch = function ( action ,params ) {
+		$.ajax( {
+			"url" : global.contextPath + "/ex/dialog/findStdtSearchList.do" ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( result ) {
+				var $stdtSearch = $( result );
+				$stdtSearch.attr( "id" ,"stdt_search_layout" ).layout( {
+					"width" : 1280 ,
+					"title" : "학생검색" ,
+					"create" : function () {
+						$stdtSearch.submit( function () {
+							return false;
+						} );
+						$stdtSearch.find( "[type='text']" ).keypress( function ( e ) {
+							if ( e.keyCode == 13 ) {
+								$.stdtSearch( action ,$.extend( $stdtSearch.find( "form" ).params() ,{
+									"paginationInfo.currentPageNo" : 1
+								} ) );
+							}
+						} );
+						$stdtSearch.find( "#dialogSearchBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.stdtSearch( action ,$.extend( $stdtSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1
+							} ) );
+						} );
+						$stdtSearch.find( "#dialogResetBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.stdtSearch( action ,$.extend( $stdtSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1 ,
+								"searchValue" : ""
+							} ) );
+						} );
+						$stdtSearch.find( ".movePage a" ).click( function ( e ) {
+							e.preventDefault();
+							var page = $( this ).data( "params" );
+							$.stdtSearch( action ,$.extend( $stdtSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : page
+							} ) );
+						} );
+						$stdtSearch.find( ".selectBtn" ).click( function ( e ) {
+							e.preventDefault();
+							action( $( this ).data( "params" ) );
+							$stdtSearch.dialog( 'destroy' ).remove();
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	$.compSearch = function ( action ,params ) {
+		console.log( "여기도?" + global.contextPath );
+		$.ajax( {
+			"url" : global.contextPath + "/ex/dialog/findCompSearchList.do" ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( result ) {
+				var $compSearch = $( result );
+				$compSearch.attr( "id" ,"comp_search_layout" ).layout( {
+					"width" : 1280 ,
+					"title" : "기업검색" ,
+					"create" : function () {
+						$compSearch.submit( function () {
+							return false;
+						} );
+						$compSearch.find( "[type='text']" ).keypress( function ( e ) {
+							if ( e.keyCode == 13 ) {
+								$.compSearch( action ,$.extend( $compSearch.find( "form" ).params() ,{
+									"paginationInfo.currentPageNo" : 1
+								} ) );
+							}
+						} );
+						$compSearch.find( "#dialogSearchBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.compSearch( action ,$.extend( $compSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1
+							} ) );
+						} );
+						$compSearch.find( "#dialogResetBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.compSearch( action ,$.extend( $compSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1 ,
+								"searchValue" : ""
+							} ) );
+						} );
+						$compSearch.find( ".movePage a" ).click( function ( e ) {
+							e.preventDefault();
+							var page = $( this ).data( "params" );
+							$.compSearch( action ,$.extend( $compSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : page
+							} ) );
+						} );
+						$compSearch.find( ".selectBtn" ).click( function ( e ) {
+							e.preventDefault();
+							action( $( this ).data( "params" ) );
+							$compSearch.dialog( 'destroy' ).remove();
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	$.compUserSearch = function ( action ,params ) {
+		$.ajax( {
+			"url" : global.contextPath + "/ex/dialog/findCompUserSearchList.do" ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( result ) {
+				var $compUserSearch = $( result );
+				$compUserSearch.attr( "id" ,"comp_search_layout" ).layout( {
+					"width" : 1280 ,
+					"title" : "기업검색" ,
+					"create" : function () {
+						$compUserSearch.submit( function () {
+							return false;
+						} );
+						$compUserSearch.find( "[type='text']" ).keypress( function ( e ) {
+							if ( e.keyCode == 13 ) {
+								$.compUserSearch( action ,$.extend( $compUserSearch.find( "form" ).params() ,{
+									"paginationInfo.currentPageNo" : 1
+								} ) );
+							}
+						} );
+						$compUserSearch.find( "#dialogSearchBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.compUserSearch( action ,$.extend( $compUserSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1
+							} ) );
+						} );
+						$compUserSearch.find( "#dialogResetBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.compUserSearch( action ,$.extend( $compUserSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1 ,
+								"searchValue" : ""
+							} ) );
+						} );
+						$compUserSearch.find( ".movePage a" ).click( function ( e ) {
+							e.preventDefault();
+							var page = $( this ).data( "params" );
+							$.compUserSearch( action ,$.extend( $compUserSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : page
+							} ) );
+						} );
+						$compUserSearch.find( ".selectBtn" ).click( function ( e ) {
+							e.preventDefault();
+							action( $( this ).data( "params" ) );
+							$compUserSearch.dialog( 'destroy' ).remove();
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	$.joinMemberPaging = function ( index ) {
+		$( "#currentPageNoSearch" ).val( index );
+	}
+	$.joinMemberSearch = function ( action ,params ,type ,saveUrl ,actionStr ) {
+		if ( $( "input[name='exChk']" ).val() != '' && $( "input[name='exChk']" ).val() != undefined ) {
+			params[ "exChk" ] = $( "input[name='exChk']" ).val();
+		}
+		// 기존 var url = type.cdIdAddnInfo2;
+		// 2019-09-30 김형섭 (이유는 모르나 url담긴 컬럼명변경으로 변경)
+		// [YK] 페이지를 선택 후 검색 또는 초기화를 했을 경우 paginationInfo.currentPageNo로 넘어가는 문제로 이전 페이징을 계속 인식하고 있어서 currentPageNo 추가
+		var url = type.cdInfoNd;
+		var title = type.cdKoNm + "검색";
+		var layout = type.cdId + "_search_layout";
+		params[ "typeCd" ] = type.cdId;
+		$.ajax( {
+			"url" : global.contextPath + url ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( result ) {
+				var $joinMemberSearch = $( result );
+				$joinMemberSearch.attr( "id" ,layout ).layout( {
+					"width" : 1280 ,
+					"title" : title ,
+					"create" : function () {
+						$joinMemberSearch.submit( function () {
+							return false;
+						} );
+						$joinMemberSearch.find( "[type='text']" ).keypress( function ( e ) {
+							if ( e.keyCode == 13 ) {
+								$.joinMemberSearch( action ,$.extend( $joinMemberSearch.find( "form" ).params() ,{
+									"paginationInfo.currentPageNo" : 1 ,
+									"currentPageNo" : 1
+								} ) ,type ,saveUrl ,actionStr );
+							}
+						} );
+						$joinMemberSearch.find( "#dialogSearchBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.joinMemberSearch( action ,$.extend( $joinMemberSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : 1 ,
+								"currentPageNo" : 1
+							} ) ,type ,saveUrl ,actionStr );
+						} );
+						$joinMemberSearch.find( "#dialogResetBtn" ).click( function ( e ) {
+							e.preventDefault();
+							$.joinMemberSearch( action ,$.extend( $joinMemberSearch.find( "form" ).find( "#hidSrch" ).params() ,{
+								"paginationInfo.currentPageNo" : 1 ,
+								"currentPageNo" : 1 ,
+								"searchValue" : ""
+							} ) ,type ,saveUrl ,actionStr );
+						} );
+						$joinMemberSearch.find( ".page_list a" ).click( function ( e ) {
+							e.preventDefault();
+							$.joinMemberSearch( action ,$.extend( $joinMemberSearch.find( "form" ).params() ,{
+								"paginationInfo.currentPageNo" : $( "#currentPageNo" ).val()
+							} ) ,type ,saveUrl ,actionStr );
+						} );
+						$joinMemberSearch.find( ".selectBtn" ).click( function ( e ) {
+							// 중복 체크
+							e.preventDefault();
+							// 저장 parentSeq
+							action( $.extend( params ,$( this ).data( 'params' ) ) );
+							/*
+							 * $.each( params ,function ( key ,value ) { delete params[key]; } );
+							 */
+							var afterAction = window[ actionStr ];
+							if ( afterAction ) afterAction( $.extend( params ,$( this ).data( 'params' ) ) );
+							$( "#" + layout ).dialog( 'destroy' ).remove();
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	// 2021-10-21 장슬기 'ty = one, ty = li'인경우 value초기화기능 추가
+	$.joinMemberClear = function ( obj ) {
+		debugger;
+		``
+		obj.closest( "div" ).find( "input:text, input:hidden" ).each( function () {
+			$( this ).val( '' );
+		} );
+	}
+	// 2021-10-21 장슬기 'custom = checkbox'인경우 value
+	$.joinMemberCheckbox = function ( obj ) {
+		var chkbox = obj.closest( "label.check" ).find( "input:checkbox" )
+		if ( chkbox.is( ':checked' ) ) {
+			chkbox.val( 'Y' );
+		} else {
+			chkbox.val( 'N' );
+		}
+	}
+	$.rtRsnPaging = function ( index ) {
+		$( "#currentPageNo" ).val( index );
+	}
+	$.rtRsnSearch = function ( index ,url ,params ) {
+		if ( !params ) {
+			params = {
+				"srrPrSeq" : index ,
+				"paginationInfo.currentPageNo" : 1
+			};
+		}
+		var layout = "rtRsn_search_layout";
+		$.ajax( {
+			"url" : url ? url : "./rtRsn.do" ,
+			"dataType" : "text" ,
+			"data" : params ,
+			"success" : function ( result ) {
+				var $rtRsnSearch = $( result );
+				$rtRsnSearch.attr( "id" ,layout ).layout( {
+					"width" : 800 ,
+					"title" : "반려사유" ,
+					"create" : function () {
+						$rtRsnSearch.submit( function () {
+							return false;
+						} );
+						$rtRsnSearch.find( ".pageList a" ).click( function ( e ) {
+							e.preventDefault();
+							$.rtRsnSearch( index ,$rtRsnSearch.find( "form" ).params() );
+						} );
+					}
+				} );
+			}
+		} );
+	}
+	$.profProfile = function ( type ,id ) {
+		var $profProfile;
+		var empid = null;
+		var url = global.contextPath + "/comm/profProfile/dialog/write.do";
+		console.log( url );
+		var buttons = [ {
+			text : "닫기" ,
+			addClass : "di_btn_close" ,
+			click : function () {
+				$profProfile.dialog( 'close' );
+			}
+		} ,{
+			text : "저장" ,
+			addClass : "di_btn_conf" ,
+			click : function () {
+				var $profProfileForm = $profProfile.find( "[name='writeForm']" );
+				if ( !$profProfileForm.validate() ) return;
+				if ( $profProfile.find( "[name=myHist]" ).val() != null ) {
+					$profProfile.find( "[name=myHist]" ).val( CKEDITOR.instances.myHist.getData() );
+				}
+				global.confirm( $profProfileForm ,global.contextPath + "/comm/profProfile/proc.do" ,"저장" ,function () {
+					location.reload();
+				} );
+				return true;
+			}
+		} ];
+		if ( id ) {
+			console.log( "!!!!!!!!!!!!!!!!!!!!!!!!!!!!" );
+			empid = id;
+			url = global.contextPath + "/comm/profProfile/dialog/view.do";
+			buttons = [ {
+				text : "닫기" ,
+				addClass : "di_btn_close" ,
+				click : function () {
+					$( this ).dialog( 'close' );
+				}
+			} ];
+		}
+		if ( type == null || type == '' ) {
+			type = '/portfolio';
+		}
+		console.log( url );
+		$.ajax( {
+			"url" : url ,
+			"dataType" : "text" ,
+			"data" : {
+				"type" : type ,
+				"empid" : empid
+			} ,
+			"success" : function ( result ) {
+				$profProfile = $( result );
+				$profProfile.attr( "id" ,"profProfile" ).layout( {
+					"width" : 1000 ,
+					"title" : "프로필 조회" ,
+					"create" : function () {
+						$profProfile.submit( function () {
+							return false;
+						} );
+					} ,
+					"buttons" : buttons
+				} );
+			}
+		} );
+	};
+} )( jQuery );

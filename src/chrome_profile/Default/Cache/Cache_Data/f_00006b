@@ -1,0 +1,755 @@
+/*!
+ * jQuery Upload File Plugin
+ * version: 3.1.0
+ * @requires jQuery v1.5 or later & form plugin
+ * Copyright (c) 2013 Ravishanker Kusuma
+ * http://hayageek.com/
+ */
+( function ( $ ) {
+	var feature = {};
+	feature.fileapi = $( "<input type='file'/>" ).get( 0 ).files !== undefined;
+	feature.formdata = window.FormData !== undefined;
+	$.fn.uploadFile = function ( options ) {
+		var s = $.extend( {
+			url : "" ,
+			method : "POST" ,
+			enctype : "multipart/form-data" ,
+			formData : null ,
+			returnType : "json" ,
+			allowedTypes : "*" ,
+			fileName : "file" ,
+			name : "fileUpload[]" ,
+			list : null ,
+			formData : {} ,
+			dynamicFormData : function () {
+				return {};
+			} ,
+			maxFileSize : ( 1024 * 1024 ) * 0 ,
+			limitFileSize : ( 1024 * 1024 ) * 0 ,
+			currentFileSize : 0 ,
+			multiple : true ,
+			dragDrop : false ,
+			autoSubmit : true ,
+			showCancel : true ,
+			showAbort : true ,
+			showDone : true ,
+			showDelete : false ,
+			showError : true ,
+			showStatusAfterSuccess : true ,
+			showStatusAfterError : true ,
+			showFileCounter : true ,
+			showProgress : true ,
+			onSelect : function ( files ) {
+				return true;
+			} ,
+			onSubmit : function ( files ,xhr ) {} ,
+			onSuccess : function ( files ,response ,xhr ) {} ,
+			onError : function ( files ,status ,message ) {} ,
+			afterUploadAll : false ,
+			uploadButtonClass : "ajax-file-upload btnTypeDef searchBtn" ,
+			abortStr : "Cancel" ,
+			cancelStr : "Cancel" ,
+			deletelStr : "삭제" ,
+			doneStr : "Finish" ,
+			htmlStr : "본문삽입" ,
+			downloadStr : "다운로드" ,
+			linkStr : "링크삽입" ,
+			multiDragErrorStr : "Multiple File Drag &amp; Drop is not allowed." ,
+			extErrorStr : "is not allowed. Allowed extensions: " ,
+			sizeErrorStr : "is not allowed. Allowed Max size: " ,
+			limitErrorStr : "is not allowed. Allowed Limit size: " ,
+			type : "normal" ,
+			uploadType : "",
+			pd : "",
+			data : "",
+			uploadErrorStr : "Upload is not allowed"
+		} ,options );
+		this.fileCounter = 1;
+		this.fCounter = 0;
+		this.sCounter = 0;
+		this.tCounter = 0;
+		var formGroup = "ajax-file-upload-" + ( new Date().getTime() );
+		this.formGroup = formGroup;
+		this.hide();
+		this.errorLog = $( "<div class='errorLog'></div>" );
+		this.requiredHeader = $( "<div class='requiredHeader'><span class='allowedTypesInfo'>allowedTypes: <span class='types'></span></span><span class='maxInfo'>Max Size: <span class='size'></span></span> <span class='limitIfo'>Limit Size: <span class='current'></span>/<span class='max'></span></span></div>" );
+		this.after( this.errorLog );
+		this.before( this.requiredHeader );
+		this.fileList = $( "<ol></ol>" );
+		var $this = this;
+		$this.parent().addClass( "fileupload_type_" + s.type );
+		var uploadFileUpdate = function () {
+			if ( s.maxFileSize != -1 ) {
+				$this.requiredHeader.find( ".maxInfo" ).show().find( ".size" ).html( getSizeStr( s.maxFileSize ) );
+			} else {
+				$this.requiredHeader.find( ".maxInfo" ).hide();
+			}
+			if ( s.limitFileSize != -1 ) {
+				$this.requiredHeader.find( ".limitIfo" ).show().find( ".max" ).html( getSizeStr( s.limitFileSize ) );
+			} else {
+				$this.requiredHeader.find( ".limitIfo" ).hide();
+			}
+			if ( s.allowedTypes && s.allowedTypes != "*" ) {
+				$this.requiredHeader.find( ".allowedTypesInfo" ).show().find( ".types" ).html( s.allowedTypes );
+			} else {
+				$this.requiredHeader.find( ".allowedTypesInfo" ).hide();
+			}
+		};
+		$( this ).on( ":update" ,function ( event ,options ) {
+			if ( options ) {
+				s = $.extend( s ,options );
+			}
+			uploadFileUpdate();
+		} );
+		uploadFileUpdate();
+		$( this.fileList ).sortable( {
+			placeholder : 'ui-state-highlight' ,
+			handle : ".moveLabel" ,
+			update : function ( event ,ui ) {
+				$( ui.item ).parent().find( "li" ).removeClass( function ( index ,css ) {
+					return ( css.match( /SORT_INDEX_(.+)/g ) || [] ).join( ' ' );
+				} );
+				$( ui.item ).parent().find( "li" ).each( function ( index ) {
+					$( this ).addClass( "SORT_INDEX_" + index );
+					$( this ).find( "input" ).each( function () {
+						$( this ).attr( "name" ,$( this ).attr( "name" ).replace( /(.+)(\[[0-9]+\])(.+)/gi ,"$1[" + index + "]$3" ) );
+					} );
+				} );
+			}
+		} );
+		this.errorLog.after( this.fileList );
+		this.responses = [];
+		if ( !feature.formdata ) {
+			s.dragDrop = false;
+		}
+		var obj = this;
+		var uploadLabel = $( '<div>' + $( this ).html() + '</div>' );
+		$( uploadLabel ).addClass( s.uploadButtonClass );
+		( function checkAjaxFormLoaded () {
+			if ( $.fn.ajaxForm ) {
+				if ( s.dragDrop ) {
+					var dragDrop = $( '<div class="ajax-upload-dragdrop" style="vertical-align:top;"><span class="ajax_drag_msg"><i class="fa fa-copy"></i>마우스로 파일을 끌어올리세요.</span></div>' );
+					$( obj ).before( dragDrop );
+					$( dragDrop ).append( $( s.dragDropStr ) );
+					$( dragDrop ).append( uploadLabel );
+					setDragDropHandlers( obj ,s ,dragDrop );
+				} else {
+					$( obj ).before( uploadLabel );
+				}
+				createCutomInputFile( obj ,formGroup ,s ,uploadLabel );
+			} else window.setTimeout( checkAjaxFormLoaded ,10 );
+		} )();
+		this.startUpload = function () {
+			$( "." + this.formGroup ).each( function ( i ,items ) {
+				if ( $( this ).is( 'form' ) ) $( this ).submit();
+			} );
+		};
+		this.stopUpload = function () {
+			$( ".ajax-file-upload-red" ).each( function ( i ,items ) {
+				if ( $( this ).hasClass( obj.formGroup ) ) $( this ).click();
+			} );
+		};
+		this.getResponses = function () {
+			return this.responses;
+		};
+		this.del = function ( pd ,data ) {
+			pd.input.status.val( 8 );
+			$( pd.statusbar ).hide();
+			s.currentFileSize = s.currentFileSize - data.fileSz;
+			obj.requiredHeader.find( ".limitIfo .current" ).html( getSizeStr( s.currentFileSize ) );
+		};
+		this.innerHtml = function ( pd ) {
+			// console.log(pd);
+			var imgHtml;
+			if ( pd.input.fileExtsnNm.val().match( /(jp(e)?g|gif|png)/gi ) ) {
+				imgHtml = CKEDITOR.dom.element.createFromHtml( '<p><img alt="" src="' + global.contextPath + '/comm/cmfile/image.do?encSvrFileNm=' + pd.input.encSvrFileNm.val() + '"  onclick="this.src.popupView()"/></p>' );
+				// imgHtml = CKEDITOR.dom.element.createFromHtml( '<p><img alt="" src="/comm/cmfile/image.do?encSvrFileNm=' + pd.input.encSvrFileNm.val() + '" /></p>' );
+			} else {
+				imgHtml = CKEDITOR.dom.element.createFromHtml( '<p><a href="' + global.contextPath + '/comm/cmfile/download.do?encSvrFileNm=' + pd.input.encSvrFileNm.val() + '">' + pd.input.origFileNm.val() + '</a></p>' );
+			}
+			CKEDITOR.instances[ s.editor ].insertElement( imgHtml );
+		};
+		this.downloadLink = function ( pd ) {
+			// console.log(pd);
+			location.href = global.contextPath + '/comm/cmfile/download.do?encFileGrpSeq=' + pd.input.encFileGrpSeq.val() + '&encFileSeq=' + pd.input.encFileSeq.val();
+		};
+		this.innerLink = function ( pd ) {
+			var $fileDownloadInnerLayout = $( '<div>' ).attr( "id" ,"fileDownloadInnerLayout" );
+			var $btn = $( '<a href="' + global.contextPath + '/comm/cmfile/download.do?encSvrFileNm=' + pd.input.encSvrFileNm.val() + '">' + pd.input.origFileNm.val() + '</a>' );
+			$fileDownloadInnerLayout.append( "<ul>" );
+			$fileDownloadInnerLayout.find( "ul" ).append( '<li class="type1"><label><input type="radio" name="btn" value="1"><a href="#" class="btns sky ico_down">다운로드</a></label></li>' );
+			$fileDownloadInnerLayout.find( "ul" ).append( '<li class="type2"><label><input type="radio" name="btn" value="2"><a href="#" class="btns mint ico_docu">PDF보기</a></label></li>' );
+			$fileDownloadInnerLayout.layout( {
+				"title" : "버튼형식을 선택해주세요." ,
+				"width" : 500 ,
+				"action" : function ( $this ) {
+					var btn = $this.find( "[name='btn']:checked" ).val();
+					if ( !btn ) {
+						$.alert( "버튼형식을 선택해주세요." ,{
+							"close" : function () {
+								$this.find( "[name='btn']:first" ).focus();
+							}
+						} );
+						return false;
+					}
+					switch ( btn ) {
+						case '2' :
+							$btn.html( '<span class="btns mint ico_docu">PDF보기</span>' );
+							break;
+						default :
+							$btn.html( '<span class="btns sky ico_down">다운로드</span>' );
+							break;
+					}
+					CKEDITOR.instances[ s.editor ].insertElement( CKEDITOR.dom.element.createFromHtml( $btn.prop( 'outerHTML' ) ) );
+					return true;
+				}
+			} );
+		};
+		if ( s.list ) {
+			$.each( s.list ,function ( key ,val ) {
+				s.currentFileSize += $.parseInt( val.fileSz );
+				var pd = new createProgressDiv( obj ,s );
+				( function () {
+					pd.input.status.val( val.status );
+					pd.input.fileGrpSeq.val( val.fileGrpSeq );
+					pd.input.fileSeq.val( val.fileSeq );
+					pd.input.encFileGrpSeq.val( val.encFileGrpSeq );
+					pd.input.encFileSeq.val( val.encFileSeq );
+					pd.input.sortOer.val( val.sortOer );
+					pd.input.origFileNm.val( val.origFileNm );
+					pd.input.svrFileNm.val( val.svrFileNm );
+					pd.input.encSvrFileNm.val( val.encSvrFileNm );
+					pd.input.fileExtsnNm.val( val.fileExtsnNm );
+					pd.input.fileSz.val( val.fileSz );
+				} )();
+				if(s.uploadType == 'one'){
+					s.pd = pd;
+					s.data = val;
+				}
+				pd.progressbar.width( '100%' );
+				pd.progressDiv.show();
+				pd.filename.html( val.origFileNm );
+				pd.filename.show();
+				pd.del.click( function ( e ) {
+					e.preventDefault();
+					obj.del( pd ,val );
+				} );
+				if(typeof val.fileExtsnNm === 'string')
+				if ( val.fileExtsnNm.match( /jpg|jpeg|gif|png$/gi ) ) {
+					$( pd.image ).attr( {
+						"src" : global.contextPath + "/comm/cmfile/thumbnail.do?width=65&height=40&encSvrFileNm=" + val.encSvrFileNm
+					} );
+				} else {
+					var ext = [ "avi" ,"bmp" ,"doc" ,"docx" ,"mov" ,"mp3" ,"mp4" ,"pdf" ,"ppt" ,"pptx" ,"psd" ,"rar" ,"tiff" ,"txt" ,"wav" ,"wma" ,"wmv" ,"xls" ,"xlsx" ,"zip" ];
+					var flag = false;
+					for ( var i = 0 ; i < ext.length ; i++ ) {
+						if ( val.fileExtsnNm.match( new RegExp( ext[ i ] ,"gi" ) ) ) {
+							$( pd.image ).attr( {
+								"src" : "/common/plugin/uploadFile/images/ico/" + ext[ i ] + ".png"
+							} );
+							flag = true;
+							break;
+						}
+					}
+					if ( !flag ) {
+						$( pd.image ).attr( {
+							"src" : "/common/plugin/uploadFile/images/ico/file.png"
+						} );
+					}
+				}
+				pd.del.show();
+				if ( s.type == "form" ) {
+					pd.downloadLink.show().click( function ( e ) {
+						e.preventDefault();
+						obj.downloadLink( pd );
+					} );
+				}
+				if ( s.editor ) {
+					if ( s.type == "content" ) {
+						pd.innerLink.show().click( function ( e ) {
+							e.preventDefault();
+							obj.innerLink( pd );
+						} );
+						pd.innerHtml.show().click( function ( e ) {
+							e.preventDefault();
+							obj.innerHtml( pd );
+						} );
+					} else {
+						pd.innerHtml.show().click( function ( e ) {
+							e.preventDefault();
+							obj.innerHtml( pd );
+						} );
+					}
+				}
+			} );
+			this.requiredHeader.find( ".limitIfo .current" ).html( getSizeStr( s.currentFileSize ) );
+		}
+		var checking = false;
+		function checkPendingUploads () {
+			if ( s.afterUploadAll && !checking ) {
+				checking = true;
+				( function checkPending () {
+					if ( obj.sCounter != 0 && ( obj.sCounter + obj.fCounter == obj.tCounter ) ) {
+						s.afterUploadAll( obj );
+						checking = false;
+					} else window.setTimeout( checkPending ,100 );
+				} )();
+			}
+		}
+		function setDragDropHandlers ( obj ,s ,ddObj ) {
+			ddObj.on( 'dragenter' ,function ( e ) {
+				e.stopPropagation();
+				e.preventDefault();
+				$( this ).css( 'border' ,'1px solid #A5A5C7' );
+			} );
+			ddObj.on( 'dragover' ,function ( e ) {
+				e.stopPropagation();
+				e.preventDefault();
+			} );
+			ddObj.on( 'drop' ,function ( e ) {
+				$( this ).css( 'border' ,'1px dotted #A5A5C7' );
+				e.preventDefault();
+				obj.errorLog.html( "" );
+				var files = e.originalEvent.dataTransfer.files;
+				if ( !s.multiple && files.length > 1 ) {
+					if ( s.showError ) $( "<div style='color:red;'>" + s.multiDragErrorStr + "</div>" ).appendTo( obj.errorLog );
+					return;
+				}
+				if ( s.onSelect( files ) == false ) return;
+				serializeAndUploadFiles( s ,obj ,files );
+			} );
+			$( document ).on( 'dragenter' ,function ( e ) {
+				e.stopPropagation();
+				e.preventDefault();
+			} );
+			$( document ).on( 'dragover' ,function ( e ) {
+				e.stopPropagation();
+				e.preventDefault();
+				ddObj.css( 'border' ,'1px dotted #A5A5C7' );
+			} );
+			$( document ).on( 'drop' ,function ( e ) {
+				e.stopPropagation();
+				e.preventDefault();
+				ddObj.css( 'border' ,'1px dotted #A5A5C7' );
+			} );
+		}
+		function getSizeStr ( size ) {
+			var sizeStr = "";
+			var sizeKB = size / 1024;
+			if ( parseInt( sizeKB / 1024 ) > 1024 ) {
+				var sizeGB = ( sizeKB / 1024 ) / 1024;
+				sizeStr = sizeGB.toFixed( 2 ) + " GB";
+			} else if ( parseInt( sizeKB ) > 1024 ) {
+				var sizeMB = sizeKB / 1024;
+				sizeStr = sizeMB.toFixed( 2 ) + " MB";
+			} else {
+				sizeStr = sizeKB.toFixed( 2 ) + " KB";
+			}
+			return sizeStr;
+		}
+		function serializeData ( extraData ) {
+			var serialized = [];
+			if ( jQuery.type( extraData ) == "string" ) {
+				serialized = extraData.split( '&' );
+			} else {
+				serialized = $.param( extraData ).split( '&' );
+			}
+			var len = serialized.length;
+			var result = [];
+			var i ,part;
+			for ( i = 0 ; i < len ; i++ ) {
+				serialized[ i ] = serialized[ i ].replace( /\+/g ,' ' );
+				part = serialized[ i ].split( '=' );
+				result.push( [ decodeURIComponent( part[ 0 ] ) ,decodeURIComponent( part[ 1 ] ) ] );
+			}
+			return result;
+		}
+		function serializeAndUploadFiles ( s ,obj ,files ) {
+			for ( var i = 0 ; i < files.length ; i++ ) {
+				if ( !isFileTypeAllowed( obj ,s ,files[ i ].name ) ) {
+					if ( s.showError ) $( "<div style='color:red;'><b>" + files[ i ].name + "</b> " + s.extErrorStr + s.allowedTypes + "</div>" ).appendTo( obj.errorLog );
+					continue;
+				}
+				if ( s.maxFileSize > -1 && files[ i ].size > s.maxFileSize ) {
+					if ( s.showError ) $( "<div style='color:red;'><b>" + files[ i ].name + "</b> " + s.sizeErrorStr + getSizeStr( s.maxFileSize ) + "</div>" ).appendTo( obj.errorLog );
+					continue;
+				}
+				if ( s.limitFileSize != -1 && s.currentFileSize + files[ i ].size > s.limitFileSize ) {
+					if ( s.showError ) $( "<div style='color:red;'><b>" + files[ i ].name + "</b> " + s.limitErrorStr + getSizeStr( s.limitFileSize ) + "</div>" ).appendTo( obj.errorLog );
+					continue;
+				}
+				var ts = s;
+				var fd = new FormData();
+				var fileName = s.fileName.replace( "[]" ,"" );
+				fd.append( fileName ,files[ i ] );
+				var extraData = s.formData;
+				if ( extraData ) {
+					var sData = serializeData( extraData );
+					for ( var j = 0 ; j < sData.length ; j++ ) {
+						if ( sData[ j ] ) {
+							fd.append( sData[ j ][ 0 ] ,sData[ j ][ 1 ] );
+						}
+					}
+				}
+				ts.fileData = fd;
+				var pd = new createProgressDiv( obj ,s );
+				var fileNameStr = "";
+				if ( s.showFileCounter ) fileNameStr = files[ i ].name;
+				else fileNameStr = files[ i ].name;
+				if ( fileNameStr.lastIndexOf( "\\" ) ) {
+					fileNameStr = fileNameStr.substring( fileNameStr.lastIndexOf( "\\" ) + 1 );
+				}
+				pd.filename.html( fileNameStr );
+				var form = $( "<form style='display:block; position:absolute;left: 150px;' class='" + obj.formGroup + "' method='" + s.method + "' action='" + s.url + "' enctype='" + s.enctype + "'></form>" );
+				form.appendTo( 'body' );
+				var fileArray = [];
+				fileArray.push( files[ i ].name );
+				ajaxFormSubmit( form ,ts ,pd ,fileArray ,obj );
+				s.currentFileSize = s.currentFileSize + files[ i ].size;
+				obj.requiredHeader.find( ".limitIfo .current" ).html( getSizeStr( s.currentFileSize ) );
+				obj.fileCounter++;
+			}
+		}
+		function isFileTypeAllowed ( obj ,s ,fileName ) {
+			var fileExtensions = s.allowedTypes.toLowerCase().split( "," );
+			var ext = fileName.split( '.' ).pop().toLowerCase();
+			if ( s.allowedTypes != "*" && jQuery.inArray( ext ,fileExtensions ) < 0 ) { return false; }
+
+			var allowedList = ['jpg','jpeg','png','gif','bmp','webp','svg','pdf','doc','docx','xls','xlsx','ppt','pptx','hwp','hwpx','hwt','mp4','avi','mkv','mov','wmv','flv','webm','txt','zip'];
+            if (!allowedList.includes(ext)) {
+                return false;
+            }
+
+			return true;
+		}
+		function createCutomInputFile ( obj ,group ,s ,uploadLabel ) {
+			var fileUploadId = "ajax-upload-id-" + ( new Date().getTime() );
+			var form = $( "<form method='" + s.method + "' action='" + s.url + "' enctype='" + s.enctype + "'></form>" );
+			var fileInputStr = "<input type='file' id='" + fileUploadId + "' name='" + s.fileName + "'/>";
+			if ( s.multiple ) {
+				if ( s.fileName.indexOf( "[]" ) != s.fileName.length - 2 ) {
+					s.fileName += "[]";
+				}
+				fileInputStr = "<input type='file' id='" + fileUploadId + "' name='" + s.fileName + "' multiple/>";
+			}
+			var fileInput = $( fileInputStr ).appendTo( form );
+			fileInput.change( function () {
+				obj.errorLog.html( "" );
+				var fileArray = [];
+				if ( this.files ) {
+					for ( var i = 0 ; i < this.files.length ; i++ ) {
+						fileArray.push( this.files[ i ].name );
+					}
+					if ( s.onSelect( this.files ) == false ) return;
+				} else {
+					var filenameStr = $( this ).val();
+					if ( filenameStr.lastIndexOf( "\\" ) ) {
+						filenameStr = filenameStr.substring( filenameStr.lastIndexOf( "\\" ) + 1 );
+					}
+					var flist = [];
+					fileArray.push( filenameStr );
+					if ( !isFileTypeAllowed( obj ,s ,filenameStr ) ) {
+						if ( s.showError ) $( "<div style='color:red;'><b>" + filenameStr + "</b> " + s.extErrorStr + s.allowedTypes + "</div>" ).appendTo( obj.errorLog );
+						return;
+					}
+					flist.push( {
+						name : filenameStr ,
+						size : 'NA'
+					} );
+					if ( s.onSelect( flist ) == false ) return;
+				}
+				uploadLabel.unbind( "click" );
+				form.hide();
+				createCutomInputFile( obj ,group ,s ,uploadLabel );
+				form.addClass( group );
+				if ( feature.fileapi && feature.formdata ) {
+					form.removeClass( group );
+					var files = this.files;
+					serializeAndUploadFiles( s ,obj ,files );
+				} else {
+					var fileList = "";
+					for ( var i = 0 ; i < fileArray.length ; i++ ) {
+						if ( s.showFileCounter ) fileList += fileArray[ i ] + "<br>";
+						else fileList += fileArray[ i ] + "<br>";;
+						obj.fileCounter++;
+					}
+					var pd = new createProgressDiv( obj ,s );
+					pd.filename.html( fileList );
+					ajaxFormSubmit( form ,s ,pd ,fileArray ,obj );
+				}
+			} );
+			form.css( {
+				'margin' : 0 ,
+				'padding' : 0
+			} );
+			var uwidth = $( uploadLabel ).width() + 10;
+			if ( uwidth == 10 ) uwidth = 120;
+			var uheight = uploadLabel.height() + 10;
+			if ( uheight == 10 ) uheight = 35;
+			uploadLabel.css( {
+				position : 'relative' ,
+				overflow : 'hidden' ,
+				cursor : 'default'
+			} );
+			fileInput.css( {
+				position : 'absolute' ,
+				'cursor' : 'pointer' ,
+				'top' : '0px' ,
+				'width' : '100%' ,
+				'height' : '100%' ,
+				'left' : '0px' ,
+				'opacity' : '0.0' ,
+				'filter' : 'alpha(opacity=0)' ,
+				'-ms-filter' : "alpha(opacity=0)" ,
+				'-khtml-opacity' : '0.0' ,
+				'-moz-opacity' : '0.0'
+			} );
+			form.appendTo( uploadLabel );
+		}
+		function createProgressDiv ( obj ,s ) {
+			this.statusbar = $( "<li class='ajax-file-upload-statusbar'></li>" );
+			this.view = $( "<div class='ajax-file-upload-view'></div>" ).appendTo( this.statusbar );
+			this.image_va = $( "<span class='ajax-file-upload-image-va'></span>" ).appendTo( this.view );
+			this.image = $( "<img class='ajax-file-upload-image'/>" ).appendTo( this.view );
+			this.content = $( "<div class='ajax-file-upload-content'></div>" ).addClass( s.type ).appendTo( this.statusbar );
+			var index = $( "[name^='" + s.name + "']" ).filter( "[name$='status']" ).length;
+			this.input = {
+				status : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".status" + "'/>" ).appendTo( this.content ) ,
+				fileGrpSeq : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".fileGrpSeq" + "'/>" ).appendTo( this.content ) ,
+				fileSeq : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".fileSeq" + "'/>" ).appendTo( this.content ) ,
+				encFileGrpSeq : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".encFileGrpSeq" + "'/>" ).appendTo( this.content ) ,
+				encFileSeq : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".encFileSeq" + "'/>" ).appendTo( this.content ) ,
+				sortOer : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".sortOer" + "'/>" ).appendTo( this.content ) ,
+				origFileNm : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".origFileNm" + "'/>" ).appendTo( this.content ) ,
+				svrFileNm : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".svrFileNm" + "'/>" ).appendTo( this.content ) ,
+				encSvrFileNm : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".encSvrFileNm" + "'/>" ).appendTo( this.content ) ,
+				fileExtsnNm : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".fileExtsnNm" + "'/>" ).appendTo( this.content ) ,
+				fileSz : $( "<input type='hidden' name='" + ( s.name + "[" + index + "]" ) + ".fileSz" + "'/>" ).appendTo( this.content )
+			};
+			this.filename = $( "<div class='ajax-file-upload-filename'></div>" ).appendTo( this.content );
+			this.progressDiv = $( "<div class='ajax-file-upload-progress'>" ).appendTo( this.content );
+			this.progressbar = $( "<div class='ajax-file-upload-bar " + obj.formGroup + "'></div>" ).appendTo( this.progressDiv );
+			this.abort = $( "<div class='ajax-file-upload-red " + obj.formGroup + "'>" + s.abortStr + "</div>" ).appendTo( this.content ).hide();
+			this.cancel = $( "<div class='ajax-file-upload-red'>" + s.cancelStr + "</div>" ).appendTo( this.content ).hide();
+			this.done = $( "<div class='ajax-file-upload-green'>" + s.doneStr + "</div>" ).appendTo( this.content ).hide();
+			this.innerLink = $( "<a href='#' class='txtLink'>" + s.linkStr + "</a>" ).appendTo( this.content ).hide();
+			this.innerHtml = $( "<a href='#' class='txtLink'>" + s.htmlStr + "</a>" ).appendTo( this.content ).hide();
+			this.downloadLink = $( "<a href='#' class='txtLink'>" + s.downloadStr + "</a>" ).appendTo( this.content ).hide();
+			this.del = $( "<a href='#' class='ico_menu menu_del'><span class='hide_txt'>" + s.deletelStr + "</span></a>" ).appendTo( this.content ).hide();
+			this.moveLabel = $( "<a href='#' class='moveLabel ico_menu menu_move'><span class='ui-icon ui-icon-arrowthick-2-n-s'></span></a>" ).appendTo( this.content );
+			obj.fileList.append( this.statusbar );
+			$( obj.fileList ).find( "li" ).each( function ( index ) {
+				$( this ).addClass( "SORT_INDEX_" + index );
+				// 0601 희재
+				var btns = $( '.ico_menu.menu_del , .txtLink , .moveLabel' );
+				var txts = $( '.ajax-file-upload-filename , .ajax-file-upload-progress' );
+				if ( $( this ).find( btns ).closest( '.ajax-file-btns-wrap' ).length == 0 ) {
+					$( this ).find( btns ).wrapAll( '<div class="ajax-file-btns-wrap"></div>' );
+				}
+				if ( $( this ).find( txts ).closest( '.ajax-file-txts-wrap' ).length == 0 ) {
+					$( this ).find( txts ).wrapAll( '<div class="ajax-file-txts-wrap"></div>' );
+				}
+			} );
+			return this;
+		}
+		function ajaxFormSubmit ( form ,s ,pd ,fileArray ,obj ) {
+			var options = {
+				cache : false ,
+				contentType : "application/x-www-form-urlencoded; charset=UTF-8" ,
+				processData : false ,
+				forceSync : false ,
+				data : s.formData ,
+				formData : s.fileData ,
+				dataType : s.returnType ,
+				beforeSubmit : function ( formData ,$form ,options ) {
+					if ( s.onSubmit.call( this ,fileArray ) != false ) {
+						var dynData = s.dynamicFormData();
+						if ( dynData ) {
+							var sData = serializeData( dynData );
+							if ( sData ) {
+								for ( var j = 0 ; j < sData.length ; j++ ) {
+									if ( sData[ j ] ) {
+										if ( s.fileData != undefined ) options.formData.append( sData[ j ][ 0 ] ,sData[ j ][ 1 ] );
+										else options.data[ sData[ j ][ 0 ] ] = sData[ j ][ 1 ];
+									}
+								}
+							}
+						}
+						obj.tCounter += fileArray.length;
+						checkPendingUploads();
+						return true;
+					}
+					pd.statusbar.append( "<div style='color:red;'>" + s.uploadErrorStr + "</div>" );
+					pd.cancel.show();
+					form.remove();
+					pd.cancel.click( function ( e ) {
+						e.preventDefault();
+						pd.statusbar.remove();
+					} );
+					return false;
+				} ,
+				beforeSend : function ( xhr ,o ) {
+					pd.progressDiv.show();
+					pd.cancel.hide();
+					pd.done.hide();
+					if ( s.showAbort ) {
+						pd.abort.show();
+						pd.abort.click( function ( e ) {
+							e.preventDefault();
+							xhr.abort();
+						} );
+					}
+					if ( !feature.formdata ) {
+						pd.progressbar.width( '5%' );
+					} else pd.progressbar.width( '1%' );
+				} ,
+				uploadProgress : function ( event ,position ,total ,percentComplete ) {
+					if ( percentComplete > 98 ) percentComplete = 98;
+					var percentVal = percentComplete + '%';
+					if ( percentComplete > 1 ) pd.progressbar.width( percentVal );
+					if ( s.showProgress ) {
+						pd.progressbar.html( percentVal );
+						pd.progressbar.css( 'text-align' ,'center' );
+					}
+				} ,
+				success : function ( data ,message ,xhr ) {
+
+					data = data.result;
+					var totIndex = $( "[name^='" + s.name + "']" ).filter( "[name$='status']" ).length-1;
+					if(s.uploadType == 'one'){
+						if(s.pd != '' && s.data != ''){
+							obj.del( s.pd ,s.data );
+							$( obj.fileList ).find( "li" ).eq(totIndex).addClass("topLine");
+							s.pd = pd;
+							s.data = data;
+						}else{
+							s.pd = pd;
+							s.data = data;
+						}
+					}
+					obj.responses.push( data );
+					pd.progressbar.width( '100%' );
+					if ( s.showProgress ) {
+						pd.progressbar.html( '100%' );
+						pd.progressbar.css( 'text-align' ,'center' );
+					}
+					pd.abort.hide();
+					s.onSuccess.call( this ,fileArray ,data ,xhr );
+					if ( s.showStatusAfterSuccess ) {
+						pd.input.status.val( data.status );
+						pd.input.fileGrpSeq.val( data.fileGrpSeq );
+						pd.input.fileSeq.val( data.fileSeq );
+						pd.input.encFileGrpSeq.val( data.fileGrpSeq );
+						pd.input.encFileSeq.val( data.fileSeq );
+						pd.input.sortOer.val( data.sortOer );
+						pd.input.origFileNm.val( data.origFileNm );
+						pd.input.svrFileNm.val( data.svrFileNm );
+						pd.input.encSvrFileNm.val( data.encSvrFileNm );
+						pd.input.fileExtsnNm.val( data.fileExtsnNm );
+						pd.input.fileSz.val( data.fileSz );
+						if ( s.showDone ) {
+							pd.done.show();
+							pd.done.click( function ( e ) {
+								e.preventDefault();
+								pd.statusbar.hide( "slow" );
+								pd.statusbar.remove();
+							} );
+						} else {
+							pd.done.hide();
+						}
+						if ( s.showDelete ) {
+							pd.del.show();
+							pd.del.click( function ( e ) {
+								e.preventDefault();
+								obj.del( pd ,data );
+							} );
+						} else {
+							pd.del.hide();
+						}
+						if ( data.fileExtsnNm && data.fileExtsnNm.match( /jpg|jpeg|gif|png/gi ) ) {
+							$( pd.image ).attr( {
+								"src" : global.contextPath + "/comm/cmfile/thumbnail.do?width=65&height=40&encSvrFileNm=" + data.encSvrFileNm
+							} );
+						} else {
+							var ext = [ "avi" ,"bmp" ,"doc" ,"docx" ,"mov" ,"mp3" ,"mp4" ,"pdf" ,"ppt" ,"pptx" ,"psd" ,"rar" ,"tiff" ,"txt" ,"wav" ,"wma" ,"wmv" ,"xls" ,"xlsx" ,"zip" ];
+							var flag = false;
+							for ( var i = 0 ; i < ext.length ; i++ ) {
+								if ( data.fileExtsnNm && data.fileExtsnNm.match( new RegExp( ext[ i ] ,"gi" ) ) ) {
+									$( pd.image ).attr( {
+										"src" : "/common/plugin/uploadFile/images/ico/" + ext[ i ] + ".png"
+									} );
+									flag = true;
+									break;
+								}
+							}
+							if ( !flag ) {
+								$( pd.image ).attr( {
+									"src" : "/common/plugin/uploadFile/images/ico/file.png"
+								} );
+							}
+						}
+						if ( s.editor ) {
+							if ( s.type == "content" ) {
+								pd.innerLink.show();
+								pd.innerLink.click( function ( e ) {
+									e.preventDefault();
+									obj.innerLink( pd );
+								} );
+								pd.innerHtml.show();
+								pd.innerHtml.click( function ( e ) {
+									e.preventDefault();
+									obj.innerHtml( pd );
+								} );
+							} else {
+								pd.innerHtml.show();
+								pd.innerHtml.click( function ( e ) {
+									e.preventDefault();
+									obj.innerHtml( pd );
+								} );
+							}
+						} else {
+							pd.innerHtml.hide();
+							pd.innerLink.hide();
+						}
+					} else {
+						pd.statusbar.hide( "slow" );
+						pd.statusbar.remove();
+					}
+					form.remove();
+					obj.sCounter += fileArray.length;
+				} ,
+				error : function ( xhr ,status ,errMsg ) {
+					pd.abort.hide();
+					if ( xhr.statusText == "abort" ) {
+						pd.statusbar.hide( "slow" );
+					} else {
+						s.onError.call( this ,fileArray ,status ,errMsg );
+						if ( s.showStatusAfterError ) {
+							pd.progressDiv.hide();
+							pd.statusbar.append( "<span style='color:red;'>ERROR: " + errMsg + "</span>" );
+						} else {
+							pd.statusbar.hide();
+							pd.statusbar.remove();
+						}
+					}
+					form.remove();
+					obj.fCounter += fileArray.length;
+				}
+			};
+			if ( s.autoSubmit ) {
+				form.ajaxSubmit( options );
+			} else {
+				if ( s.showCancel ) {
+					pd.cancel.show();
+					pd.cancel.click( function ( e ) {
+						e.preventDefault();
+						form.remove();
+						pd.statusbar.remove();
+					} );
+				}
+				form.ajaxForm( options );
+			}
+		}
+		return this;
+	};
+}( jQuery ) );

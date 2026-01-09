@@ -1,0 +1,1423 @@
+var global = {
+	isMobile : false ,
+	contextPath : "" ,
+	realDev : "" ,
+	test : ""
+};
+( function ( $ ) {
+	$.ajaxSetup( {
+		method : 'POST' ,
+		contentType : "application/x-www-form-urlencoded; charset=UTF-8" ,
+		// dataType : "json" , 기본값을 사용 안할경우 JSON.parse 를 사용하여 처리
+		timeout : 1 * 60 * 60 * 1000 ,// 2 hours ,
+		beforeSend : function ( xhr ) {
+			xhr.setRequestHeader( "ajax" ,"true" );
+			if ( this.dataType != "script" ) {
+				showLoding();
+			}
+		} ,
+		error : function ( request ,status ,error ) {
+			removeLoding();
+			console.log( error );
+			$.alert( "서버 요청을 실패하였습니다." );
+			// $.alert( "서버요청이 실패되었습니다. \n code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error );
+		} ,
+		complete : function () {
+			removeLoding();
+		}
+	} );
+	$.submit = function ( url ,params ) {
+		url = url ? url : location.href;
+		params = params ? params : {};
+		if ( !url ) {
+			$.alert( "URL은 필수값입니다." );
+			return false;
+		}
+		var $form = $( "<form method='post' action='" + url + "'></form>" );
+		$.each( params ,function ( key ,value ) {
+			$form.append( $( "<input type='input'/>" ).attr( {
+				"name" : key ,
+				"value" : value
+			} ) );
+		} );
+		$form.appendTo( "body" ).submit().remove();
+	};
+	$.location = function ( url ,params ) {
+		url = url ? url : location.href;
+		params = params ? params : {};
+		if ( !url ) {
+			$.alert( "URL은 필수값입니다." );
+			return false;
+		}
+		var $form = $( "<form method='get' action='" + url + "'></form>" );
+		$.each( params ,function ( key ,value ) {
+			$form.append( $( "<input type='hidden'/>" ).attr( {
+				"name" : key ,
+				"value" : value
+			} ) );
+		} );
+		$form.appendTo( "body" ).submit().remove();
+		/*
+		 * $form.appendTo( "body" ).submit()(function(){ showLoding(); return true; }).remove();
+		 */
+	};
+	$.updateDepthList = function ( url ,depth1Name ,depth1Cd ,depth2Name ,depth2Cd ,depth3Name ,depth3Cd ,action ,depth4Name ,depth4Cd ,depthTy ) {
+		var depth1List = null;
+		var depth1Ld = true; // 최초 로딩시에만 자식테이블 selected 해준다.(1뎁스를 다른것으로 바꿨을때 2뎁스의 값이 이전값으로 selected되는 문제발생)
+		var depth2List = null;
+		var depth2Ld = true;
+		var depth3List = null;
+		var depth3Ld = true;
+		var depth4List = null;
+		$( "select[name$='" + depth1Name + "']" ).change( function ( e ) {
+			e.preventDefault();
+			if ( depth2List == null ) return;
+			var $this = $( e.target );
+			var $depth2Obj = $( "select[name$='" + depth2Name + "']" );
+			$depth2Obj.val( "" ).find( "option" ).not( "[value='']" ).remove();
+			if ( depth3List != null ) $( "select[name$='" + depth3Name + "']" ).find( "option" ).not( "[value='']" ).remove();
+			if ( depth4List != null ) $( "select[name$='" + depth4Name + "']" ).find( "option" ).not( "[value='']" ).remove();
+			$.each( depth2List ,function ( index ,entry ) {
+				if ( entry.depth1Cd == $this.val() ) {
+					if ( entry.depth2Cd == depth2Cd && depth1Ld ) {
+						$depth2Obj.append( new Option( entry.depth2Nm ,entry.depth2Cd ,null ,true ) );
+						$depth2Obj.change();
+						depth1Ld = false;
+					} else {
+						$depth2Obj.append( new Option( entry.depth2Nm ,entry.depth2Cd ) );
+					}
+				} else if ( depthTy == "all" && $this.val() == "" ) { /* depthTy가 all + 1뎁스 값이 비워져 있을 경우 : selected 없이 option append */
+					$depth2Obj.append( new Option( entry.depth2Nm ,entry.depth2Cd ) );
+				}
+			} );
+			if ( depthTy == "all" ) { /* depthTy가 all 인 경우 : depth2Ld true로 변환, 2뎁스 change 이벤트 호출 */
+				depth2Ld = true;
+				$depth2Obj.change();
+			}
+		} );
+		$( "select[name$='" + depth2Name + "']" ).change( function ( e ) {
+			e.preventDefault();
+			var $this = $( e.target );
+			if ( depth3Name != null && depth3Name != "" && depth3Name != "null" ) {
+				var $depth3Obj = $( "select[name$='" + depth3Name + "']" );
+				$depth3Obj.val( "" ).find( "option" ).not( "[value='']" ).remove();
+				if ( depth3List == null ) return;
+				$.each( depth3List ,function ( index ,entry ) {
+					if ( entry.depth2Cd == $this.val() ) {
+						if ( entry.depth1Cd == $( "select[name$='" + depth1Name + "']" ).val() ) {
+							if ( entry.depth3Cd == depth3Cd && depth2Ld ) {
+								$depth3Obj.append( new Option( entry.depth3Nm ,entry.depth3Cd ,null ,true ) );
+								$depth3Obj.change();
+								depth2Ld = false;
+							} else {
+								$depth3Obj.append( new Option( entry.depth3Nm ,entry.depth3Cd ) );
+							}
+						} else { /* 2뎁스는 값이 같지만, 1뎁스의 값이 다른 경우 : 부모값 넣어서 처음부터 그려냄 */
+							depth1Cd = entry.depth1Cd;
+							depth2Cd = entry.depth2Cd;
+							depth1Ld = true;
+							depth2Ld = true;
+							updateDepth1();
+						}
+					} else if ( depthTy == "all" && $this.val() == "" ) { /* depthTy가 all + 2뎁스 값이 비워져 있을 경우 */
+						if ( $( "select[name$='" + depth1Name + "']" ).val() != "" ) { /* 1뎁스 값이 있을 경우 */
+							if ( entry.depth1Cd == $( "select[name$='" + depth1Name + "']" ).val() ) $depth3Obj.append( new Option( entry.depth3Nm ,entry.depth3Cd ) ); /* for문의 1뎁스 값과 1뎁스 선택된 값이 일치하는 경우 : 3뎁스 option append(1뎁스의 해당하는 자식만 그려냄) */
+						} else {
+							$depth3Obj.append( new Option( entry.depth3Nm ,entry.depth3Cd ) ); /* 3뎁스 option을 모두 그려냄 */
+						}
+					}
+				} );
+			}
+			if ( depthTy == "all" ) { /* depthTy가 all 인 경우 : depth3Ld true로 변환, 3뎁스 change 이벤트 호출 */
+				depth3Ld = true;
+				$depth3Obj.change();
+			}
+		} );
+		$( "select[name$='" + depth3Name + "']" ).change( function ( e ) {
+			e.preventDefault();
+			var $this = $( e.target );
+			if ( depth4Name != null && depth4Name != "" && depth4Name != "null" ) {
+				var $depth4Obj = $( "select[name$='" + depth4Name + "']" );
+				$depth4Obj.val( "" ).find( "option" ).not( "[value='']" ).remove();
+				if ( depth4List == null ) return;
+				$.each( depth4List ,function ( index ,entry ) {
+					if ( entry.depth3Cd == $this.val() ) {
+						if ( entry.depth2Cd == $( "select[name$='" + depth2Name + "']" ).val() ) {
+							if ( entry.depth4Cd == depth4Cd && depth3Ld ) {
+								$depth4Obj.append( new Option( entry.depth4Nm ,entry.depth4Cd ,null ,true ) );
+								depth3Ld = false;
+							} else {
+								$depth4Obj.append( new Option( entry.depth4Nm ,entry.depth4Cd ) );
+							}
+						}
+						if ( entry.depth2Cd != $( "select[name$='" + depth2Name + "']" ).val() || entry.depth1Cd != $( "select[name$='" + depth1Name + "']" ).val() ) { /* 3뎁스는 값이 같지만, 1뎁스 또는 2뎁스의 값이 다른 경우 : 부모값 넣어서 처음부터 그려냄 */
+							depth1Cd = entry.depth1Cd;
+							depth2Cd = entry.depth2Cd;
+							depth3Cd = entry.depth3Cd;
+							depth1Ld = true;
+							depth2Ld = true;
+							depth3Ld = true;
+							updateDepth1();
+						}
+					} else if ( depthTy == "all" && $this.val() == "" ) { /* depthTy가 all + 3뎁스 값이 비워져 있을 경우 */
+						if ( $( "select[name$='" + depth2Name + "']" ).val() != "" ) { /* 2뎁스 값이 있을 경우 */
+							if ( entry.depth2Cd == $( "select[name$='" + depth2Name + "']" ).val() ) $depth4Obj.append( new Option( entry.depth4Nm ,entry.depth4Cd ) ); /* for문의 2뎁스 값과 2뎁스 선택된 값이 일치하는 경우 : 4뎁스 option append(2뎁스의 해당하는 자식만 그려냄) */
+						} else if ( $( "select[name$='" + depth1Name + "']" ).val() != "" ) { /* 1뎁스 값이 있을 경우 */
+							if ( entry.depth1Cd == $( "select[name$='" + depth1Name + "']" ).val() ) $depth4Obj.append( new Option( entry.depth4Nm ,entry.depth4Cd ) ); /* for문의 1뎁스 값과 1뎁스 선택된 값이 일치하는 경우 : 4뎁스 option append(1뎁스의 해당하는 자식만 그려냄) */
+						} else {
+							$depth4Obj.append( new Option( entry.depth4Nm ,entry.depth4Cd ) ); /* 4뎁스 option을 모두 그려냄 */
+						}
+					}
+				} );
+				if ( depthTy == "all" ) { /* depthTy가 all 인 경우 : depth4Ld true로 변환, 4뎁스 change 이벤트 호출 */
+					depth4Ld = true;
+					$depth4Obj.change();
+				}
+			}
+		} );
+		$( "select[name$='" + depth4Name + "']" ).change( function ( e ) {
+			e.preventDefault();
+			var $this = $( e.target );
+			if ( $this.val().length > 0 ) { /* 4뎁스 선택된 값이 존재하는 경우 : 해당 부모들의 값들을 넘겨서 updateDepth1 호출하여 처음부터 다시 그려냄 */
+				$.each( depth4List ,function ( index ,entry ) {
+					if ( entry.depth4Cd == $this.val() ) {
+						if ( entry.depth3Cd != $( "select[name$='" + depth3Name + "']" ).val() || entry.depth2Cd != $( "select[name$='" + depth2Name + "']" ).val() || entry.depth1Cd != $( "select[name$='" + depth1Name + "']" ).val() ) { /* 3뎁스는 값이 같지만, 1뎁스 또는 2뎁스 또는 3뎁스의 값이 다른 경우 : 부모값 넣어서 처음부터 그려냄 */
+							depth1Cd = entry.depth1Cd;
+							depth2Cd = entry.depth2Cd;
+							depth3Cd = entry.depth3Cd;
+							depth4Cd = entry.depth4Cd;
+							depth1Ld = true;
+							depth2Ld = true;
+							depth3Ld = true;
+							depth4Ld = true;
+							updateDepth1();
+						}
+					}
+				} );
+			}
+		} );
+		var updateDepth1 = function () {
+			if ( depth1List == null ) return;
+			var $depth1Obj = $( "select[name$='" + depth1Name + "']" );
+			$depth1Obj.find( "option" ).not( "[value='']" ).remove();
+			var depth1All = true;
+			$.each( depth1List ,function ( index ,entry ) {
+				if ( entry.depth1Cd == depth1Cd ) {
+					$depth1Obj.append( new Option( entry.depth1Nm ,entry.depth1Cd ,null ,true ) );
+					$depth1Obj.change();
+					depth1All = false;
+				} else {
+					$depth1Obj.append( new Option( entry.depth1Nm ,entry.depth1Cd ) );
+				}
+			} );
+			if ( depth1All && depthTy == "all" ) { /* depthTy가 all일때, 모든 뎁스의 option을 그리기 위해 change 이벤트 실행 */
+				$depth1Obj.change();
+			}
+			if ( action ) {
+				action();
+			}
+		};
+		if ( depth1List == null ) {
+			$.ajax( {
+				"url" : url ,
+				"dataType" : "json" ,
+				"success" : function ( result ) {
+					depth1List = result.depth1List;
+					depth2List = result.depth2List;
+					depth3List = result.depth3List;
+					depth4List = result.depth4List;
+					updateDepth1();
+				}
+			} );
+		} else {
+			updateDepth1();
+		}
+	};
+	$.rand = function () {
+		var chars = '0123456789abcdef'.split( '' );
+		var uuid = [] ,rnd = Math.random ,r;
+		uuid[ 8 ] = uuid[ 13 ] = uuid[ 18 ] = uuid[ 23 ] = '-';
+		uuid[ 14 ] = '4';
+		for ( var i = 0 ; i < 36 ; i++ ) {
+			if ( !uuid[ i ] ) {
+				r = 0 | rnd() * 16;
+				uuid[ i ] = chars[ ( i == 19 ) ? ( r & 0x3 ) | 0x8 : r & 0xf ];
+			}
+		}
+		return 'uuid' + uuid.join( '' ).replace( /\-/gi ,"" );
+	};
+	$.lpad = function ( i ,l ,s ) {
+		var o = i.toString();
+		if ( !s ) {
+			s = '0';
+		}
+		while ( o.length < l ) {
+			o = s + o;
+		}
+		return o;
+	};
+	$.rpad = function ( i ,l ,s ) {
+		var o = i.toString();
+		if ( !s ) {
+			s = '0';
+		}
+		while ( o.length < l ) {
+			o = o + s;
+		}
+		return o;
+	};
+} )( jQuery );
+jQuery.fn.extend( {
+	"params" : function () {
+		var params = {};
+		$.each( $( this ).find( ":input" ).serializeArray() ,function ( index ,object ) {
+			if ( params[ object.name ] ) {
+				if ( params[ object.name ] instanceof Array ) {
+					params[ object.name ].push( object.value );
+				} else {
+					var arr = new Array();
+					arr.push( params[ object.name ] );
+					arr.push( object.value );
+					params[ object.name ] = arr;
+				}
+			} else {
+				params[ object.name ] = object.value;
+			}
+		} );
+		return params;
+	} ,
+	"setParams" : function ( params ) {
+		var $this = $( this );
+		$this.find( "input[type='hidden'],input[type='text'],textarea" ).val( "" );
+		$this.find( "select" ).find( "option:first" ).prop( "selected" ,true ).attr( "selected" ,true );
+		$this.find( "input[type='checkbox'],input[type='radio']" ).prop( "checked" ,false ).attr( "checked" ,false );
+		$.each( params ,function ( key ,val ) {
+			var $target = $this.find( "[name='" + key + "']" );
+			if ( $target.is( ":radio" ) ) {
+				$target.filter( "[value='" + val + "']" ).prop( "checked" ,true ).attr( "checked" ,true ).click();
+			} else if ( $target.is( ":checkbox" ) ) {
+				$target.prop( "checked" ,false ).trigger( "checkbox:update" );
+				if ( val instanceof Array ) {
+					$.each( val ,function ( valKey ,valVal ) {
+						$target.filter( "[value='" + valVal + "']" ).prop( "checked" ,true ).attr( "checked" ,true ).trigger( "checkbox:update" );
+					} );
+				} else {
+					$target.filter( "[value='" + val + "']" ).prop( "checked" ,true ).attr( "checked" ,true ).trigger( "checkbox:update" );
+				}
+			} else if ( $target.is( "select" ) ) {
+				if ( val ) {
+					$target.val( val ).data( "value" ,val );
+				}
+			} else {
+				$target.val( val );
+			}
+		} );
+		return $( this );
+	} ,
+	"crop" : function ( cropBoxData ,action ) {
+		if ( cropBoxData == null ) cropBoxData = {};
+		cropBoxData = $.extend( {
+			width : 640 ,
+			height : 480 ,
+			ratio : []
+		} ,cropBoxData );
+		var $this = $( this );
+		var params = $this.data( "params" ) ? $this.data( "params" ) : {};
+		$.ajax( {
+			"url" : global.contextPath + "/comm/cmfile/dialog/uploadFileToCrop.do" ,
+			"dataType" : "text" ,
+			"success" : function ( html ) {
+				var $html = $( html );
+				var origFileNm = params.origFileNm;
+				var fileExtsnNm = params.fileExtsnNm;
+				var fileSz = params.fileSz;
+				var svrFileNm = params.svrFileNm;
+				var encSvrFileNm = ( params.encSvrFileNm ) ? params.encSvrFileNm : "";
+				var data = (params.data) ? params.data : {};
+				var $cropImg = $html.find( '#cropImg' );
+				$cropImg.attr( 'src' ,global.contextPath + "/comm/cmfile/thumbnail.do?width=1000&height=1000&encSvrFileNm=" + encSvrFileNm );
+				$html.layout( {
+					"title" : "이미지 편집" ,
+					"width" : 800 ,
+					buttons : [ {
+						text : "닫기" ,
+						addClass : "di_btn_close" ,
+						click : function () {
+							$html.dialog( 'close' );
+							$( 'html' ).removeClass( 'popOn' );
+						}
+					} ,{
+						text : "파일업로드" ,
+						addClass : "di_btn_upload" ,
+						click : function () {
+							$.upload( function ( entry ) {
+								origFileNm = entry.result.origFileNm;
+								svrFileNm = entry.result.svrFileNm;
+								encSvrFileNm = entry.result.encSvrFileNm;
+								fileExtsnNm = entry.result.fileExtsnNm;
+								fileSz = entry.result.fileSz;
+								data.canvasData = data.cropBoxData = null;
+								$cropImg.cropper( 'replace' ,global.contextPath + "/comm/cmfile/thumbnail.do?width=1000&height=1000&encSvrFileNm=" + entry.result.encSvrFileNm );
+							} );
+						}
+					} ,{
+						text : "확인" ,
+						addClass : "di_btn_conf" ,
+						click : function () {
+							var result = {
+								"origFileNm" : origFileNm ,
+								"svrFileNm" : svrFileNm ,
+								"encSvrFileNm" : encSvrFileNm ,
+								"fileExtsnNm" : fileExtsnNm ,
+								"fileSz" : fileSz ,
+								"data" : data
+							};
+							$this.attr( "src" ,global.contextPath + "/comm/cmfile/crop.do?width=" + data.position.w + "&height=" + data.position.h + "&x=" + data.position.x + "&y=" + data.position.y + "&encSvrFileNm=" + encSvrFileNm );
+							$this.data( "params" ,result );
+							action( result );
+							$html.dialog( 'close' );
+							$( 'html' ).removeClass( 'popOn' );
+							ajaxCropEmptyVal();
+						}
+					} ] ,
+					"open" : function ( $this ) {
+						$( 'html' ).addClass( 'popOn' );
+						console.log(params);
+						if ( params.fileSz == null || params.fileSz == "undefined" ) {
+							$.upload( function ( entry ) {
+								origFileNm = entry.result.origFileNm;
+								svrFileNm = entry.result.svrFileNm;
+								encSvrFileNm = entry.result.encSvrFileNm;
+								fileExtsnNm = entry.result.fileExtsnNm;
+								fileSz = entry.result.fileSz;
+								data.canvasData = data.cropBoxData = null;
+								$cropImg.cropper( 'replace' ,global.contextPath + "/comm/cmfile/thumbnail.do?width=1000&height=1000&encSvrFileNm=" + entry.result.encSvrFileNm );
+							} );
+						}
+						var cropObj = {
+							viewMode : 1 ,
+							// aspectRatio : 4 / 3 ,
+							dragMode : 'move' ,
+							background : true ,
+							restore : true ,
+							guides : true ,
+							highlight : true ,
+							cropBoxMovable : true ,
+							cropBoxResizable : true ,
+							crop : function ( e ) {
+								data = {
+									"position" : {
+										"w" : Math.floor( e.width ) ,
+										"h" : Math.floor( e.height ) ,
+										"x" : Math.floor( e.x ) ,
+										"y" : Math.floor( e.y )
+									} ,
+									"cropBoxData" : $cropImg.cropper( "getCropBoxData" ) ,
+									"canvasData" : $cropImg.cropper( "getCanvasData" )
+								};
+							} ,
+							built : function () {
+								// 1. setCanvasData 먼저 쌔팅할것
+								if ( data && data.canvasData ) {
+									$cropImg.cropper( "setCanvasData" ,data.canvasData );
+								}
+								// 2.setCanvasData 이후 쌔팅할것
+								$cropImg.cropper( "setCropBoxData" ,data && data.cropBoxData ? data.cropBoxData : cropBoxData );
+							}
+						};
+						var exCropObj = $.extend( true ,cropObj ,cropBoxData );
+						$cropImg.customTags();
+						$cropImg.cropper( exCropObj );
+					}
+				} );
+			}
+		} );
+	}
+} );
+$( document ).ready( function () {
+	if ( global == null ) global = {};
+	global = $.extend( global ,{
+		// 프린트 함수
+		print : function ( obj ,url ) {
+			var x = window.screen.width / 2;
+			var y = window.screen.height * 8 / 10;
+			var params = $( obj ).data( "params" );
+			var elements = "";
+			$.each( params ,function ( i ,v ) {
+				elements += "<input type='hidden' name='" + i + "' value='" + v + "'>";
+			} );
+			var $form = $( "<form method='get' action='" + ( ( url ) ? url : "./print.do" ) + "' target='printPop'>" + elements + "</form>" ).appendTo( "body" );
+			var w = window.open( ( ( url ) ? url : "./print.do" ) ,"printPop" ,'toolbar=no, location=no, left=0, top=0, directories=no, status=no, menubar=no, scrollbars=yes, resizable=no, copyhistory=no, width=' + x + 'px, height=' + y + 'px' );
+			$form.submit().remove();
+			return w;
+		} ,
+		// 리스트화면 이동 함수
+		index : function ( currentPageNo ,url ) {
+			if ( $( "[name='currentPageNo']" ).length == 0 ) return;
+			var $form = $( "[name='currentPageNo']" ).closest( "form" );
+			if ( currentPageNo ) $form.find( "[name='currentPageNo']" ).val( currentPageNo );
+			if ( $form.find( "[name='retUrl']" ).length > 0 && url != "" ) {
+				url = $form.find( "[name='retUrl']" ).val();
+			}
+			if ( $form.find( ".search_form" ).hasClass( "on" ) ) {
+				$form.append( '<input type="hidden" name="detSearch" value="Y"/>' );
+			}
+			$form.attr( "action" ,( ( url ) ? url : "./index.do" ) );
+			$form.submit();
+		} ,
+		// 버튼에 data-params를 갖고 이동
+		location : function ( url ,obj ) {
+			/*
+			 * if ( backForm.chk() ) { backForm.location( null ,url ,$( obj ).data( "params" ) ); } else {
+			 */
+			var params = $( obj ).data( "params" );
+			url = url ? url : location.href;
+			params = params ? params : {};
+			if ( !url ) {
+				$.alert( "URL은 필수값입니다." );
+				return false;
+			}
+			var $form = $( "<form method='get' action='" + url + "'></form>" );
+			$.each( params ,function ( key ,value ) {
+				$form.append( $( "<input type='hidden'/>" ).attr( {
+					"name" : key ,
+					"value" : value
+				} ) );
+			} );
+			$form.appendTo( "body" ).submit().remove();
+			/* } */
+		} ,
+		// 초기화 함수
+		reset : function ( currentPageNo ,url ) {
+			if ( $( "[name='currentPageNo']" ).length == 0 ) return;
+			var $form = $( "[name='currentPageNo']" ).closest( "form" );
+			if ( currentPageNo ) $form.find( "[name='currentPageNo']" ).val( currentPageNo );
+			if ( $form.find( "[name='retUrl']" ).length > 0 && url != "" ) {
+				url = $form.find( "[name='retUrl']" ).val();
+			}
+			$form.find( "input:hidden[name*='Orgid']" ).val( "" );
+			$form.find( "input:hidden[name*='orgid']" ).val( "" );
+			$form.find( "input:visible, select" ).val( "" );
+			$form.find( "input:radio" ).attr( "checked" ,false );
+			$form.find( "input:checkbox" ).attr( "checked" ,false );
+			$form.attr( "action" ,( ( url ) ? url : "./index.do" ) );
+			$form.submit();
+		} ,
+		// currentPageNo만 파라메터로보냄
+		// 기존 검색파라메터들을 유지하기위해서는 관련 파라메터들을 다 보내줘야하는데
+		// 공통으로 처리하기때문에 상세에서 원치않는 파라메터값들이 넘어가서면 예외상황이 발생 되므로 submit또는 검색바영역 을 파라메터로 보내는건 문제가된다.
+		// history.back();과 같은 기능은 목록에서 왔다면 괜찮지만 다른곳에서 왔을때 목록으로 가지못하는 예외상황이 있다
+		// 목록에서 이동 후 상세에서 페이지 이동이 계속된상태에서 목록으로 이동시 파라메터값을 계속 유지하지 못한다.
+		// 공통처리를 위한 해결방안 메모
+		// 상세로 보낼때 submit를 해줘야한다.
+		// 최초진입 또는 index.do 또는 목록 인지를 구분하여 다음페이지에 파라메터가 넘어가야하며 그외 페이지에서는 파라메터를 넘기지 않으며 이전 값을 유지한다.
+		// 상세에 또 리스트가 있을경우 검색어등 중복되므로 해당부분은 검색어가 겹치지 않게 처리해야함
+		// 포트폴리오에는 공통으로 모든부분을 문제 없이 처리하기엔 불가한 부분이 있음
+		// backForm을 공통으로 적용은 안하고 해야하는 부분에 따로 넣어서 사용 <tagBmw:backForm/>
+		cancel : function ( currentPageNo ,url ) {
+			if ( $( "[name='currentPageNo']" ).length == 0 ) return;
+			/*
+			 * if ( backForm.chk() ) { backForm.cancel( url ); } else {
+			 */
+			$.location( ( ( url ) ? url : "./index.do" ) ,{
+				"currentPageNo" : ( ( currentPageNo ) ? currentPageNo : $( "[name='currentPageNo']" ).val() )
+			} );
+			/* } */
+		} ,
+		/* [DK][210511][요청암호화처리] */
+		/* [DK][210602][childObj, sub Tag ... 에서 문제 발생 및 공통 처리 어려운 관계로 우선 미적용] */
+		/*
+		 * submit : function ( form ,url ,actionType ) { if ( aesEnc.init( form ) ) { if ( actionType != "ajax" ) aesEnc.submitEncForm( url ); return true; } else { return false; } } ,
+		 */
+		/* [DK][210602][childObj, sub Tag ... 에서 문제 발생 및 공통 처리 어려운 관계로 우선 미적용] */
+		/* [DK][210511][요청암호화처리] */
+		// 상세화면 이동 함수
+		write : function ( dataSeq ,url ,obj ) {
+			if ( $( "[name='currentPageNo']" ).length == 0 ) return;
+			dataSeq = ( dataSeq ) ? dataSeq : 0;
+			var $form = $( "[name='currentPageNo']" ).closest( "form" );
+			if ( $form.find( "[name='dataSeq']" ).length == 0 ) {
+				$form.append( '<input type="hidden" name="dataSeq" id="dataSeq" value="' + dataSeq + '"/>' );
+			}
+			if ( $form.find( "[name='parentSeq']" ).length == 0 ) {
+				$form.append( '<input type="hidden" name="parentSeq" id="parentSeq" value="' + dataSeq + '"/>' );
+			}
+			if ( dataSeq ) $form.find( "[name='dataSeq']" ).val( dataSeq );
+			if ( obj ) {
+				global.location( ( ( url ) ? url : "./write.do" ) ,obj );
+			} else {
+				$form.attr( "action" ,( ( url ) ? url : "./write.do" ) );
+				// 암호화 적용
+				/* [DK][210602][childObj, sub Tag ... 에서 문제 발생 및 공통 처리 어려운 관계로 우선 미적용] */
+				/* global.submit( $form ,( ( url ) ? url : "./write.do" ) ); */
+				/* [DK][210602][childObj, sub Tag ... 에서 문제 발생 및 공통 처리 어려운 관계로 우선 미적용] */
+				// 암호화 미적용
+				// $form.submit();
+				/*
+				 * if ( backForm.chk() ) { backForm.submit( $form ); } else {
+				 */
+				$form.submit();
+				/* } */
+			}
+		} ,
+		// 등록 기능 함수
+		proc : function ( url ,retAction ,msg ) {
+			if ( $( "[name='dataSeq']" ).length == 0 ) return;
+			var $form = $( "[name='dataSeq']" ).closest( "form" );
+			var dataSeq = $( "[name='dataSeq']" ).val();
+			var contChk = false;
+			if ( $form.find( "[class*=ime][class*=editor]" ).length ) {
+				$form.find( "[class*=ime][class*=editor]" ).each( function () {
+					// 에디터활성화 체크
+					var dataChk = eval( "CKEDITOR.instances." + $( this ).attr( "name" ) );
+					// CKEDitor 내용 가져오기
+					if ( dataChk != null ) {
+						$( this ).val( eval( "CKEDITOR.instances." + $( this ).attr( "name" ) + ".getData()" ) );
+					}
+					var info = $( this ).classData();
+					if ( info.required ) {
+						if ( $( this ).val() == "" ) {
+							$.alert( "[" + $( this ).attr( "title" ) + "]항목을 입력해주세요." );
+							contChk = true;
+						}
+					}
+				} );
+			}
+			$form.find( "[name$='Arr']" ).each( function () {
+				console.log( $( this ).attr( "name" ) );
+			} );
+			if ( contChk ) return;
+			if ( !$form.validate() ) return;
+			global.confirm( $form ,( ( url ) ? url : "./proc.do" ) ,( ( msg != null ) ? msg : ( dataSeq > 0 ) ? '수정' : '등록' ) ,retAction );
+		} ,
+		delMsg : "서비스 이용에 불편을 드려 죄송합니다. 지금은 요청을 처리할 수 없습니다." ,
+		// 엑셀 다운로드 사유입력 후 다운
+		excel : function ( smlbSeq ,url ,excelCount ,retAction ,cuslTy ) {
+			if ( $( "[name='currentPageNo']" ).length == 0 ) return;
+			if ( excelCount == 0 ) {
+				$.alert( "다운로드할 데이터가 없습니다." );
+				return false;
+			}
+			var $form = $( "[name='currentPageNo']" ).closest( "form" );
+			$.ajax( {
+				"url" : "./dialog/excel/pop.do" ,
+				"dataType" : "text" ,
+				"data" : {
+					"smlbSeq" : smlbSeq ,
+					"excelCount" : excelCount ,
+					"excelCuslTy" : cuslTy
+				} ,
+				"success" : function ( result ) {
+					var $rs = $( result )
+					$rs.attr( "id" ,"excel_layout" ).layout( {
+						"width" : 800 ,
+						"title" : "엑셀다운로드 사유" ,
+						"buttons" : [ {
+							text : "취소" ,
+							addClass : "di_btn_close" ,
+							click : function () {
+								$rs.dialog( 'close' );
+							}
+						} ,{
+							text : "확인" ,
+							addClass : "di_btn_conf" ,
+							click : function () {
+								var $form2 = $rs.find( "form[name='excelDownForm']" );
+								var downRe = $( "#downRe" ).val();
+								// [YK] 엑셀암호화
+								var downPw = $( "#downPw" ).val();
+								var chkCnt = $( "#chkCnt" ).val();
+								if ( downRe == "" ) {
+									$.alert( '다운로드 사유를 입력해주세요.' );
+								} else if ( chkCnt > 0 && downPw == "" ) {
+									// [YK] 엑셀암호화
+									$.alert( "비밀번호를 입력해주세요." );
+								} else {
+									global.confirm( $form2 ,"./dialog/excel/log.do" ,"다운로드" ,function () {
+										$rs.dialog( 'close' );
+										// [YK] 엑셀암호화 excel 비밀번호 암호화로 비밀번호 입력 받은내용
+										if ( downPw ) {
+											var str = '<input type="text" name="excelPw" id="excelPw" value="' + downPw + '" />';
+											$form.append( str );
+										}
+										global.index( '' ,( url ? url : './excel.do' ) );
+										// [YK]엑셀암호화 다운로드후 제거
+										$( "#excelPw" ).remove();
+										if ( retAction != null && retAction != '' ) {
+											retAction();
+										}
+									} );
+								}
+							}
+						} ]
+					} )
+				}
+			} );
+		} ,
+		// 삭제 기능 함수
+		del : function ( url ,retAction ,errorAction ) {
+			if ( $( "[name='dataSeq']" ).length == 0 ) return;
+			var $form = $( "[name='dataSeq']" ).closest( "form" );
+			global.confirm( $form ,( ( url ) ? url : "./delete.do" ) ,"삭제" ,retAction ,errorAction );
+		} ,
+		// 체크 일괄 삭제 기능 함수
+		delChk : function ( url ,retAction ,errorAction ) {
+			if ( $( "[name='dataChkSeq']" ).length == 0 ) return;
+			var $form = $( "[name='dataChkSeq']" ).closest( "form" );
+			var $chkList = $( "[name='dataChkSeq']:checked" );
+			if ( !$chkList.length ) {
+				$.alert( "[대상]항목을 선택해주세요." );
+				return;
+			}
+			global.confirm( $form ,( ( url ) ? url : "./deleteChk.do" ) ,"삭제" ,retAction ,errorAction );
+		} ,
+		// 삭제 자식 체크
+		delCntChk : function () {
+			// th에 있는 체크박스 체크시 모든 체크박스 공통처리
+			$( "table thead input[type='checkbox']" ).closest( "table" ).find( "tbody input[type='checkbox']" ).each( function ( i ) {
+				$( this ).prop( "checked" ,false );
+			} );
+			$.alert( global.delMsg );
+		} ,
+		// 상태 변경 기능 함수
+		updateStaCd : function ( obj ,dataSeq ,url ,retAction ) {
+			var oldVal = $( "[name=" + $( obj ).attr( "name" ) + "Val" + "]" ).val();
+			var $form = $( obj ).closest( "form" );
+			if ( $form.find( "[name=dataSeq]" ).val() == null ) {
+				$form.append( '<input type="hidden" name="dataSeq" value="' + dataSeq + '"/>' );
+			} else {
+				// 리스트화면에서 리스트데이터가 form안에 있을때 에러발생하여 파라메터로 받은값으로만 전송되도록 처리
+				$form.find( "[name=dataSeq]" ).remove();
+				$form.append( '<input type="hidden" name="dataSeq" value="' + dataSeq + '"/>' );
+			}
+			if ( $form.find( "[name=staCd]" ).val() == null ) {
+				$form.append( '<input type="hidden" name="' + $( obj ).attr( "name" ).replace( "rowStaCd" ,"" ) + '" value="' + $( obj ).val() + '"/>' );
+			} else {
+				// 리스트화면에서 리스트데이터가 form안에있을때 에러발생하여 파라메터로 받은값으로만 전송되도록 처리
+				$form.find( "[name=staCd]" ).remove();
+				$form.append( '<input type="hidden" name="' + $( obj ).attr( "name" ).replace( "rowStaCd" ,"" ) + '" value="' + $( obj ).val() + '"/>' );
+			}
+			// global.confirm( $form ,( ( url ) ? url : "./updateStaCd.do" ) ,"변경", ( ( retAction ) ? retAction : function(){global.index();} ));
+			var okayAction = retAction ? retAction : function () {
+				global.index();
+			}
+			$.confirm3( '변경 하시겠습니까?' ,function () {
+				$.ajax( {
+					"url" : ( url ) ? url : "./updateStaCd.do" ,
+					"method" : "POST" ,
+					"dataType" : "json" ,
+					"data" : $form.serialize() ,
+					"success" : function ( data ) {
+						var dataSeq = Number( data[ "result" ] );
+						if ( dataSeq > 0 ) {
+							$form.find( "[name='dataSeq']" ).val( dataSeq );
+							$.alert( '변경  되었습니다.' ,{
+								"close" : okayAction
+							} );
+						} else if ( dataSeq == -99 ) {
+							if ( errorAction ) {
+								errorAction();
+							} else {
+								global.delCntChk();
+							}
+						} else {
+							$.alert( "서비스 이용에 불편을 드려 죄송합니다. 지금은 요청을 처리할 수 없습니다." );
+						}
+					}
+				} );
+			} ,function () {
+				$( obj ).val( oldVal );
+			} );
+		} ,
+		// 체크 일괄 변경 기능 함수
+		updateStaCdChk : function ( url ,obj ,retAction ) {
+			if ( $( "[name='dataChkSeq']" ).length == 0 ) return;
+			var $form = ( obj ? $( obj ).closest( "form" ) : $( "[name='dataChkSeq']" ).closest( "form" ) );
+			console.log( $form );
+			if ( !$form.validate() ) return;
+			global.confirm( $form ,( ( url ) ? url : "./updateStaCdChk.do" ) ,"변경" ,( ( retAction ) ? retAction : function () {
+				global.index();
+			} ) );
+		} ,
+		confirm : function ( form ,url ,msg ,retAction ,errorAction ) {
+			var $form = form;
+			var okayAction = retAction ? retAction : function () {
+				if ( $form.find( "[name='dataSeq']" ).val() > 0 ) global.cancel();
+				else global.cancel( 1 );
+			}
+			$.confirm( msg + ' 하시겠습니까?' ,function () {
+				$.ajax( {
+					"url" : url ,
+					"method" : "POST" ,
+					"dataType" : "json" ,
+					"data" : $form.serialize() ,
+					"success" : function ( data ) {
+						var dataSeq = Number( data[ "result" ] );
+						if ( dataSeq > 0 ) {
+							$form.find( "[name='dataSeq']" ).val( dataSeq );
+							$.alert( msg + ' 되었습니다.' ,{
+								"close" : okayAction
+							} );
+						} else if ( dataSeq == -9997 ) {
+							$.alert( data[ "resultMsg" ] );
+						}  else if ( dataSeq == -99 ) {
+							if ( errorAction ) {
+								errorAction();
+							} else {
+								global.delCntChk();
+							}
+						} else {
+							$.alert( "서비스 이용에 불편을 드려 죄송합니다. 지금은 요청을 처리할 수 없습니다." );
+						}
+					}
+				} );
+			} );
+		} ,
+		subBoard : function ( menuSeq ,teamSeq ,typeSeq ,mngtUrl ) {
+			var params = {
+				"teamSeq" : teamSeq ,
+				"typeSeq" : typeSeq ,
+				"ptfolUrl" : mngtUrl
+			};
+			$.location( global.contextPath + '/comm/board/' + menuSeq + '/index.do' ,params );
+		} ,
+		subBoardPtfol : function ( menuUrl ,teamSeq ,typeSeq ,ptfolUrl ) {
+			var params = {
+				"teamSeq" : teamSeq ,
+				"typeSeq" : typeSeq ,
+				"ptfolUrl" : ptfolUrl
+			};
+			$.location( global.contextPath + '/ptfol/comm/board/' + menuUrl + '/index.do' ,params );
+		} ,
+		keypress : function () {
+			if ( event.keyCode == 13 ) {
+				global.index( 1 );
+			}
+		} ,
+		comment : {
+			menuSeqInfo : null ,
+			downMenuSeqInfo : 0 ,
+			positionInfo : null ,
+			page : 0 ,
+			autoSeq : null ,
+			focusSeq : null ,
+			index : function ( menuSeq ,downMenuSeq ,position ,page ) {
+				if ( menuSeq ) global.comment.menuSeqInfo = menuSeq;
+				if ( downMenuSeq ) global.comment.downMenuSeqInfo = downMenuSeq;
+				if ( position ) global.comment.positionInfo = position;
+				if ( page ) global.comment.page = page;
+				if ( global.comment.menuSeqInfo ) {
+					$.ajax( {
+						"url" : global.contextPath + "/comm/comment/comment.do" ,
+						"dataType" : "text" ,
+						"data" : {
+							"menuSeq" : global.comment.menuSeqInfo ,
+							"downMenuSeq" : global.comment.downMenuSeqInfo ,
+							"commentPageNo" : page ,
+							"autoSeq" : global.comment.autoSeq ,
+							"focusSeq" : global.comment.focusSeq
+						} ,
+						"success" : function ( html ) {
+							$( "#globalComment" ).remove();
+							$( global.comment.positionInfo ).append( html );
+							if ( global.comment.autoSeq ) replyList( global.comment.autoSeq ); // 저장한 댓글 자동 펼치기
+							if ( global.comment.focusSeq ) $( '.focus' + global.comment.focusSeq ).focus(); // 저장한 글 자동 포커스 이동
+						}
+					} );
+				}
+			}
+		} ,
+		popup : function ( params ,url ,id ) {
+			$.openWindow( {
+				"url" : global.contextPath + url ,
+				"width" : "1500" ,
+				"id" : id ,
+				params : params
+			} );
+		} ,
+		imageEdit : function ( name ,status ,fileGrpSeq ,fileSeq ) {
+			$( "#fileEditeImg" + name ).crop( {
+				width : 640 ,
+				height : 480
+			} ,function ( entry ) {
+				$( '#' + name ).empty();
+				$( '#' + name ).append( '<input type="hidden" name="' + name + '[0].status" value="' + ( status == null ? 2 : status ) + '"/>' + '<input type="hidden" name="' + name + '[0].fileGrpSeq" value="' + ( fileGrpSeq == null ? 0 : fileGrpSeq ) + '"/>' + '<input type="hidden" name="' + name + '[0].fileSeq" value="' + ( fileSeq == null ? 0 : fileSeq ) + '"/>' + '<input type="hidden" name="' + name + '[0].origFileNm" value="' + entry.origFileNm + '"/>' + '<input type="hidden" name="' + name + '[0].svrFileNm" value="' + entry.svrFileNm + '"/>' + '<input type="hidden" name="' + name + '[0].fileExtsnNm" value="' + entry.fileExtsnNm + '"/>' + '<input type="hidden" name="' + name + '[0].fileSz" value="' + entry.fileSz + '"/>' + '<input type="hidden" name="' + name + '[0].repnImgCropValu" value=' + $.JSONDecode( entry.data ) + '></input>' );
+				$( "#imageDel" + name ).show();
+				if ( $( "#repnImgSrc" ) ) $( "#repnImgSrc" ).val( "N" );
+			} );
+		} ,
+		imageDel : function ( name ) {
+			$( "#imageDel" + name ).hide();
+			$( "input[name='" + name + "[0].status']" ).val( '8' );
+			$( "#fileEditeImg" + name ).data( "params" ,{} );
+			$( "#fileEditeImg" + name ).attr( "src" ,global.contextPath + "/comm/cmfile/thumbnail.do?encSvrFileNm=" );
+		} ,
+		/*
+		 * childObj : { init : function (tbId) { $("#"+tbId+"rowTable").find(".hasDatepicker").attr("id", null); $("#"+tbId+"rowTable").find(".hasDatepicker").datepicker("destroy"); }, add : function ( tbId, typeCd , actionStr) { global.childObj.init(tbId); var rowObj = $('#'+tbId+'rowTable').find('tr').clone(); if($("#" + tbId + " tr").find( '[name$="adStatus"]' ).val() == 0) $("#" + tbId + " tbody tr").remove(); var index = $("#" + tbId + " tbody").find( "tr" ).length; $(rowObj).find("[name^='row']").attr( "name" ,function () { return $( this ).attr( "name" ).replace("row[0]" ,tbId + "[" + index + "]" ); } ); $("#" + tbId + " tbody").append($(rowObj)); $("#" + tbId + " tbody").find("tr").last().customTags(); var $tr = $("#" + tbId + " tbody").find( 'tr:visible' ); $tr.each(function(i){$(this).find('#rowNum').html(i + 1)}); global.childObj.cntChg(tbId + typeCd, 1); global.childObj.cntChg(tbId + "Tot", 1); var afterAction = window[actionStr]; if(afterAction) afterAction(); }, del : function ( tbId, typeCd, obj, actionStr) { var $searchType = $( obj ).closest( 'tr' ).hide().find( '[name$="searchType"]' ).val(); $( obj ).closest( 'tr' ).find( '[name$="adStatus"]' ).val( 8 ); var $tr = $( obj ).closest( 'tbody' ).find( 'tr:visible' ); $tr.each(function(i){$(this).find('#rowNum').html(i + 1)}); global.childObj.cntChg(tbId + typeCd, -1); global.childObj.cntChg(tbId + "Tot", -1); var afterAction = window[actionStr]; if(afterAction) afterAction(); }, cntChg : function(cntId, num){ $('#' + cntId + 'Cnt').text(parseInt($('#' + cntId + 'Cnt').text()) + Number(num)); },
+		 */
+		childObj : {
+			init : function ( tbId ) {
+				$( "#" + tbId + "rowTable" ).find( ".hasDatepicker" ).attr( "id" ,null );
+				$( "#" + tbId + "rowTable" ).find( ".hasDatepicker" ).datepicker( "destroy" );
+			} ,
+			add : function ( tbId ,typeCd ,actionStr ) {
+				global.childObj.init( tbId );
+				var rowObj = $( '#' + tbId + 'rowTable' ).find( 'tr' ).clone();
+				if ( $( "#" + tbId + " tr" ).find( '[name$="adStatus"]' ).val() == 0 ) $( "#" + tbId + " tbody tr" ).remove();
+				var index = $( "#" + tbId + " tbody" ).find( "tr" ).length;
+				$( rowObj ).find( "[name^='row']" ).attr( "name" ,function () {
+					return $( this ).attr( "name" ).replace( "row[0]" ,tbId + "[" + index + "]" );
+				} );
+				$( rowObj ).find( '[name$="childSeq"]' ).val( index + 1 );
+				$( "#" + tbId + " tbody" ).append( $( rowObj ) );
+				$( "#" + tbId + " tbody" ).find( "tr" ).last().customTags();
+				var $tr = $( "#" + tbId + " tbody" ).find( 'tr' );
+				var rowNum = 1;
+				var sortNum = 1;
+				$tr.each( function ( i ) {
+					$( this ).find( "input, textarea, select" ).attr( "name" ,function () {
+						if ( $( this ).attr( "name" ) != undefined ) { return $( this ).attr( "name" ).replace( /\[[0-9]+\]/ ,"[" + ( i + 1 ) + "]" ); }
+					} );
+					if ( $( this ).is( ':visible' ) ) {
+						$( this ).find( '[name$="sortNum"]' ).val( sortNum++ );
+						if ( $( this ).find( '[name$="upChildSeq"]' ).length == 0 || $( this ).find( '[name$="upChildSeq"]' ).val() == 0 ) {
+							$( this ).find( '#rowNum' ).html( rowNum++ );
+						} else {
+							$( this ).find( '#rowNum' ).removeAttr( 'id' ).addClass( "lower_ic" ).text( "하단" );
+						}
+					}
+				} );
+				global.childObj.cntChg( tbId + typeCd ,1 );
+				global.childObj.cntChg( tbId + "Tot" ,1 );
+				var afterAction = window[ actionStr ];
+				if ( afterAction ) afterAction();
+			} ,
+			addChild : function ( tbId ,obj ,actionStr ) {
+				global.childObj.init( tbId );
+				var rowObj = $( '#' + tbId + 'rowTable' ).find( 'tr' ).clone();
+				if ( $( "#" + tbId + " tr" ).find( '[name$="adStatus"]' ).val() == 0 ) $( "#" + tbId + " tbody tr" ).remove();
+				var index = $( "#" + tbId + " tbody" ).find( "tr" ).length;
+				$( rowObj ).find( "[name^='row']" ).attr( "name" ,function () {
+					return $( this ).attr( "name" ).replace( "row[0]" ,tbId + "[" + index + "]" );
+				} );
+				$( rowObj ).find( '[name$="upChildSeq"]' ).val( $( obj ).closest( 'tr' ).find( '[name$="childSeq"]' ).val() )
+				$( rowObj ).find( '.addChildBtn' ).remove();
+				$( rowObj ).find( '[name$="childSeq"]' ).val( index + 1 )
+				if ( $( obj ).closest( 'tr' ).nextAll( ':has(#rowNum):first' ).length > 0 ) {
+					$( obj ).closest( 'tr' ).nextAll( ':has(#rowNum):first' ).eq( 0 ).before( $( rowObj ) );
+				} else {
+					$( obj ).closest( 'tbody' ).find( 'tr' ).last().after( $( rowObj ) );
+				}
+				var $tr = $( obj ).closest( 'tbody' ).find( 'tr' );
+				var rowNum = 1;
+				var sortNum = 1;
+				$tr.each( function ( i ) {
+					$( this ).find( "input, textarea, select" ).attr( "name" ,function () {
+						return $( this ).attr( "name" ).replace( /\[[0-9]+\]/ ,"[" + ( i + 1 ) + "]" );
+					} );
+					$( this ).find( '[name$="sortNum"]' ).val( sortNum++ );
+					if ( $( this ).is( ':visible' ) ) {
+						if ( $( this ).find( '[name$="upChildSeq"]' ).length == 0 || $( this ).find( '[name$="upChildSeq"]' ).val() == 0 ) {
+							$( this ).find( '#rowNum' ).html( rowNum++ );
+						} else {
+							$( this ).find( '#rowNum' ).removeAttr( 'id' ).addClass( "lower_ic" ).text( "하단" );
+						}
+					}
+				} );
+				$( "#" + tbId + " tbody" ).find( "tr" ).last().customTags();
+				// global.childObj.cntChg(tbId + typeCd, 1);
+				global.childObj.cntChg( tbId + "Tot" ,1 );
+				var afterAction = window[ actionStr ];
+				if ( afterAction ) afterAction();
+			} ,
+			del : function ( tbId ,typeCd ,obj ,actionStr ) {
+				var $searchType = $( obj ).closest( 'tr' ).hide().find( '[name$="searchType"]' ).val();
+				$( obj ).closest( 'tr' ).find( '[name$="adStatus"]' ).val( 8 );
+				var $tr = $( obj ).closest( 'tbody' ).find( 'tr' );
+				if ( $tr.find( '[name$="upChildSeq"]' ).val() == 0 ) {
+					var upChildSeq = $( obj ).closest( 'tr' ).find( '[name$="childSeq"]' ).val();
+					$( obj ).closest( 'tbody' ).find( 'tr' ).each( function ( i ) {
+						if ( upChildSeq == $( this ).find( '[name$="upChildSeq"]' ).val() ) {
+							$( this ).hide();
+							$( this ).find( '[name$="adStatus"]' ).val( 8 );
+						}
+					} );
+				}
+				var rowNum = 1;
+				var sortNum = 1;
+				$tr.each( function ( i ) {
+					$( this ).find( "input, textarea, select" ).attr( "name" ,function () {
+						if ( $( this ).attr( "name" ) ) return $( this ).attr( "name" ).replace( /\[[0-9]+\]/ ,"[" + ( i + 1 ) + "]" );
+					} );
+					if ( $( this ).is( ':visible' ) ) {
+						$( this ).find( '[name$="sortNum"]' ).val( sortNum++ );
+						if ( $( this ).find( '[name$="upChildSeq"]' ).length == 0 || $( this ).find( '[name$="upChildSeq"]' ).val() == 0 ) {
+							$( this ).find( '#rowNum' ).html( rowNum++ );
+						} else {
+							$( this ).find( '#rowNum' ).removeAttr( 'id' ).addClass( "lower_ic" ).text( "하단" );
+						}
+					}
+				} );
+				global.childObj.cntChg( tbId + typeCd ,-1 );
+				global.childObj.cntChg( tbId + "Tot" ,-1 );
+				var afterAction = window[ actionStr ];
+				if ( afterAction ) afterAction();
+			} ,
+			cntChg : function ( cntId ,num ) {
+				$( '#' + cntId + 'Cnt' ).text( parseInt( $( '#' + cntId + 'Cnt' ).text() ) + Number( num ) );
+			} ,
+			// 지출내역관련 (합계, 계산) 스크립트
+			expnCalc : function ( tbId ,params ,ty ,calc ) {
+				// params = {"str01" : 수입/지출, "str02" : 승인상태, "num01" : 가격, "num02" : 수량, "num03" : 금액}
+				var tot01 = 0;
+				var tot02 = 0;
+				var tot03 = 0;
+				$( "#" + tbId + "TagLib" ).find( "tbody" ).find( "tr:visible" ).each( function () {
+					var str01 = "";
+					var str02 = "";
+					var num01 = "";
+					var num02 = "";
+					var num03 = "";
+					if ( ty == "view" ) {
+						str01 = $( this ).find( "td" ).eq( params.str01 ).text();
+						str02 = $( this ).find( "td" ).eq( params.str02 ).text();
+						num01 = $( this ).find( "td" ).eq( params.num01 ).text().replace( /\,/gi ,"" );
+						num02 = $( this ).find( "td" ).eq( params.num02 ).text().replace( /\,/gi ,"" );
+						if ( calc == "minus" ) {
+							$( this ).find( "td" ).eq( params.num03 ).html( $.numberFormat( num01 - num02 ) );
+						} else {
+							$( this ).find( "td" ).eq( params.num03 ).html( $.numberFormat( num01 * num02 ) );
+						}
+						$( this ).find( "td" ).eq( params.num01 ).text( $.numberFormat( num01 ) );
+						$( this ).find( "td" ).eq( params.num02 ).text( $.numberFormat( num02 ) );
+					} else {
+						str01 = $( this ).find( "td" ).eq( params.str01 ).find( "select :selected" ).text();
+						str02 = $( this ).find( "td" ).eq( params.str02 ).find( "select :selected" ).text();
+						if ( $( this ).find( "td" ).eq( params.num01 ).find( ":input" ).val() ) num01 = $( this ).find( "td" ).eq( params.num01 ).find( ":input" ).val().replace( /\,/gi ,"" );
+						if ( $( this ).find( "td" ).eq( params.num02 ).find( ":input" ).val() ) num02 = $( this ).find( "td" ).eq( params.num02 ).find( ":input" ).val().replace( /\,/gi ,"" );
+						if ( calc == "minus" ) {
+							$( this ).find( "td" ).eq( params.num03 ).find( ":input" ).val( $.numberFormat( num01 - num02 ) );
+						} else {
+							$( this ).find( "td" ).eq( params.num03 ).find( ":input" ).val( $.numberFormat( num01 * num02 ) );
+						}
+						if ( $( this ).find( "td" ).eq( params.num01 ).find( ":input" ).val() ) $( this ).find( "td" ).eq( params.num01 ).find( ":input" ).val( $.numberFormat( num01 ) )
+					}
+					if ( params.autoProv == "Y" ) str02 = "승인";
+					num03 = $.numberFormat( num01 * num02 );
+					if ( str02 == "승인" ) {
+						if ( str01 == "" ) str01 = params.str01;
+						if ( str01 == "수입" ) {
+							tot01 = tot01 + Number( num03.replace( /\,/gi ,"" ) );
+						}
+						if ( str01 == "지출" ) {
+							tot02 = tot02 + Number( num03.replace( /\,/gi ,"" ) );
+						}
+					} else if ( calc == "minus" ) {
+						tot01 = tot01 + Number( num01.replace( /\,/gi ,"" ) );
+						tot02 = tot02 + Number( num02.replace( /\,/gi ,"" ) );
+					}
+				} );
+				var $totTr = $( "#expnTot" ).find( "tbody" ).find( "tr" ).eq( 0 );
+				if ( params.noCate == "Y" ) {
+					$totTr.find( "td" ).eq( 0 ).find( "span" ).html( $.numberFormat( tot01 ) );
+				} else {
+					$totTr.find( "td" ).eq( 0 ).find( "span" ).html( $.numberFormat( tot01 ) );
+					$totTr.find( "td" ).eq( 1 ).find( "span" ).html( $.numberFormat( tot02 ) );
+					$totTr.find( "td" ).eq( 2 ).find( "span" ).html( $.numberFormat( tot01 - tot02 ) );
+				}
+			}
+		} ,
+		// 설문팝업
+		survPop : function ( params ,url ) {
+			if ( !url ) url = global.contextPath + "/comm/surv/popup/" + params.enSspmSeq + "/index.do";
+			var id = "surnPop";
+			if ( params != null && params.id ) id = params.id;
+			console.log( url );
+			console.log( params );
+			$.openWindow( {
+				"url" : url ,
+				"width" : "1500" ,
+				"id" : id ,
+				params : params
+			} );
+		} ,
+		// 드래그엔드랍
+		updateSortNum : function () {
+			if ( $( "[name='currentPageNo']" ).length == 0 ) return;
+			var $form = $( "[name='currentPageNo']" ).closest( "form" );
+			$( ".sortable" ).find( "tbody tr" ).each( function ( i ) {
+				console.log( $( this ).html() );
+				$( this ).find( "[name$='sortNum']" ).val( i + 1 );
+			} );
+			console.log( $( ".sortable" ).attr( "class" ) );
+			if ( $( ".sortable" ).attr( "class" ).indexOf( "not" ) == -1 ) {
+				$.ajax( {
+					"url" : "./updateSortNum.do" ,
+					"method" : "POST" ,
+					"dataType" : "json" ,
+					"data" : $form.serialize() ,
+					"success" : function ( data ) {
+						if ( Number( data[ "result" ] ) > 0 ) {
+							$.alert( '변경 되었습니다.' );
+						} else {
+							$.alert( "서비스 이용에 불편을 드려 죄송합니다. 지금은 요청을 처리할 수 없습니다." );
+						}
+					}
+				} );
+			}
+		} ,
+		// global.dialog.list(function(params){console.log(params)}, {"url" : "url", "id" : "id", "title" : "title"});
+		dialog : {
+			action : null ,
+			params : null ,
+			layParams : null ,
+			initUrl : null ,
+			page : function ( page ) {
+				// 2020-04-09 김형섭 Abs동일시 "currentPageNo":page 추가
+				global.dialog.list( global.dialog.action ,$.extend( global.dialog.params ,{
+					"paginationInfo.currentPageNo" : page ,
+					"currentPageNo" : page
+				} ) );
+			} ,
+			list : function ( action, params ) {
+				global.dialog.list( action, params, null );
+			} ,
+			list : function ( action, params, layParams ) {
+				global.dialog.action = action;
+				global.dialog.params = params;
+				global.dialog.layParams = layParams;
+				var url = params.url;
+				if ( global.dialog.initUrl == null ) global.dialog.initUrl = url;
+				// if(!url) url = global.contextPath + "/comm/surv/popup/" + params.enSspmSeq + "/index.do";
+				// alert(url)
+				var id = params.id;
+				var title = params.title;
+				var width = params.width;
+				var buttons = (layParams) ? layParams.buttons : null;
+				buttons = (buttons) ? buttons : params.buttons;
+				var layout = id + "_layout";
+				$.ajax( {
+					"url" : global.contextPath + url ,
+					"dataType" : "text" ,
+					"data" : params ,
+					"success" : function ( result ) {
+						var $dialogList = $( result );
+						$dialogList.attr( "id" ,layout ).layout( {
+							"width" : ( width ) ? width : 1280 ,
+							"buttons" : ( buttons ) ? buttons : [ {
+								text : "닫기" ,
+								addClass : "di_btn_close" ,
+								click : function () {
+									$( this ).dialog( 'close' );
+								}
+							} ] ,
+							"title" : title ,
+							"create" : function () {
+								$dialogList.submit( function () {
+									return false;
+								} );
+								$dialogList.find( "[type='text']" ).attr( "keypress" ,"" );
+								$dialogList.find( "[type='text']" ).keypress( function ( e ) {
+									if ( e.keyCode == 13 ) {
+										formData = $.extend( $dialogList.find( "form" ).params() ,{
+											"paginationInfo.currentPageNo" : 1 ,
+											"currentPageNo" : 1
+										} );
+										global.dialog.list( action ,$.extend( params ,formData ) );
+									}
+								} );
+								$dialogList.find( ".searchBtn" ).attr( "onclick" ,"" );
+								$dialogList.find( ".searchBtn" ).click( function ( e ) {
+									e.preventDefault();
+									formData = $.extend( $dialogList.find( "form" ).params() ,{
+										"paginationInfo.currentPageNo" : 1 ,
+										"currentPageNo" : 1
+									} );
+									global.dialog.list( action ,$.extend( params ,formData ) );
+								} );
+								$dialogList.find( ".resetBtn" ).attr( "onclick" ,"" );
+								$dialogList.find( ".resetBtn" ).click( function ( e ) {
+									e.preventDefault();
+									formData = $.extend( $dialogList.find( "form" ).params() ,{
+										"paginationInfo.currentPageNo" : 1 ,
+										"searchValue" : "" ,
+										"currentPageNo" : 1
+									} );
+									global.dialog.list( action ,$.extend( params ,formData ) );
+									/*
+									 * global.dialog.list( action ,$.extend( $dialogList.find( "form" ).params() ,{ "paginationInfo.currentPageNo" : 1 , "searchValue" : "" } ) );
+									 */
+								} );
+								$dialogList.find( ".movePage a" ).attr( "onclick" ,"" );
+								$dialogList.find( ".movePage a" ).click( function ( e ) {
+									e.preventDefault();
+									var page = $( this ).data( "params" );
+									global.dialog.list( action ,$.extend( $dialogList.find( "form" ).params() ,{
+										"paginationInfo.currentPageNo" : page ,
+										"currentPageNo" : page
+									} ) );
+								} );
+								$dialogList.find( ".selectBtn" ).attr( "onclick" ,"" );
+								$dialogList.find( ".selectBtn" ).click( function ( e ) {
+									e.preventDefault();
+									action( $( this ).data( "params" ) );
+									$dialogList.dialog( 'destroy' ).remove();
+								} );
+								$dialogList.find( ".multiSelectBtn" ).attr( "onclick" ,"" );
+								$dialogList.find( ".multiSelectBtn" ).click( function ( e ) {
+									// 체크한 값 별로 액션(3개 선택하면 3번 액션)
+									e.preventDefault();
+									var $chkList = $dialogList.find( "[name='dataChkSeq']:checked" );
+									$.each( $chkList ,function () {
+										action( $( this ).data( "params" ) )
+									} );
+									$dialogList.dialog( 'destroy' ).remove();
+								} );
+								$dialogList.find( ".multiSelectBtn2" ).attr( "onclick" ,"" );
+								$dialogList.find( ".multiSelectBtn2" ).click( function ( e ) {
+									// 체크한 값을 한번에(3개 선택해도 1번 액션)
+									e.preventDefault();
+									var $chkList = $dialogList.find( "[name='dataChkSeq']:checked" );
+									if ( $chkList.length > 0 ) {
+										action( $chkList );
+										$dialogList.dialog( 'destroy' ).remove();
+									} else {
+										$.alert( "대상을 선택해주세요." );
+									}
+								} );
+								$dialogList.find( ".listBtn" ).attr( "onclick" ,"" );
+								$dialogList.find( ".listBtn" ).click( function ( e ) {
+									e.preventDefault();
+									params.url = global.dialog.initUrl;
+									formData = $.extend( $dialogList.find( "form" ).params() ,{
+										"paginationInfo.currentPageNo" : 1 ,
+										"currentPageNo" : 1
+									} );
+									global.dialog.list( action ,$.extend( params ,formData ) );
+								} );
+							}
+						} );
+					}
+				} );
+			}
+		} ,
+		// 현재년도학기
+		setNowYySem : function ( yyyymmdd ) {
+			var result = Array();
+			var today = new Date();
+			if ( yyyymmdd != null && yyyymmdd.length == 10 ) {
+				var arr1 = yyyymmdd.split( '.' );
+				// 2019-12-02 김형섭 두번째 인자 월 0~11 값 12월 == 11
+				arr1[ 1 ] = String( arr1[ 1 ] - 1 );
+				today = new Date( arr1[ 0 ] ,arr1[ 1 ] ,arr1[ 2 ] );
+			}
+			var yy = today.getFullYear();
+			var mm = today.getMonth() + 1;
+			var semCd = "0001";
+			var semCdNm = "1학기";
+			/*
+			 * if(mm > 2 && mm < 7) { semCd = "0001"; semCdNm = "1학기"; }else if(mm > 6 && mm < 9) { semCd = "0002"; semCdNm = "여름학기"; }else if(mm > 8 && mm < 12) { semCd = "0003"; semCdNm = "2학기"; }else if(mm > 11 || mm < 3) { semCd = "0004"; semCdNm = "겨울학기"; }
+			 */
+			if ( mm > 2 && mm < 9 ) {
+				semCd = "0001";
+				semCdNm = "1학기";
+			} else {
+				semCd = "0003";
+				semCdNm = "2학기";
+			}
+			if ( mm < 3 ) {
+				yy = yy - 1;
+			}
+			result[ "yy" ] = yy;
+			result[ "semCd" ] = semCd;
+			result[ "semCdNm" ] = semCdNm;
+			return result;
+		} ,
+		report : function ( obj ,type ) {
+			var params = obj;
+			if ( type == 'obj' ) params = $( obj ).data( "params" );
+			if ( params.odrPath == null ) {
+				$.alert( "출력을 위한 정보가 설정되어있지 않습니다. </br></br>(관리자에게 문의바랍니다.)" );
+				return false;
+			}
+			$.openWindow( {
+				"url" : "./dialog/report.do" ,
+				"layout" : "toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=1230, height=840" ,
+				"params" : params
+			} );
+		} ,
+		"cdSetPop" : function ( cd ) {
+			$.ajax( {
+				"url" : "/comm/maCd/dialog/cdSetPop.do" ,
+				"dataType" : "text" ,
+				"data" : {
+					"upCdId" : cd
+				} ,
+				"success" : function ( result ) {
+					var $resultHtml = $( result );
+					$resultHtml.attr( "id" ,"cdSetup_layout" ).layout( {
+						"width" : 1000 ,
+						"title" : "공통코드 설정" ,
+						buttons : [ {
+							text : "수정" ,
+							addClass : "di_btn_conf" ,
+							click : function () {
+								$resultHtml.find( "#childTagLib" ).find( "tbody" ).find( "tr:visible" ).each( function ( e ) {
+									$( this ).find( "[name$='soOr']" ).val( e );
+								} );
+								global.confirm( $( "#cdSetForm" ) ,"/comm/maCd/dialog/cdSetProc.do" ,"수정" ,function () {
+									location.reload();
+								} );
+							}
+						} ,{
+							text : "닫기" ,
+							addClass : "di_btn_close" ,
+							click : function () {
+								$resultHtml.dialog( 'close' );
+							}
+						} ] ,
+						"create" : function () {}
+					} );
+				}
+			} );
+		}
+	} );
+	if ( global.resultMsg ) {
+		$.alert( global.resultMsg );
+	}
+} );
+var parseDate = function ( strDate ) {
+	var _strDate = strDate;
+	var _dateObj = new Date( _strDate );
+	if ( _dateObj.toString() == 'Invalid Date' ) {
+		_strDate = _strDate.split( '.' ).join( '-' );
+		_dateObj = new Date( _strDate );
+	}
+	if ( _dateObj.toString() == 'Invalid Date' ) {
+		var _parts = _strDate.split( ' ' );
+		var _dateParts = _parts[ 0 ];
+		_dateObj = new Date( _dateParts );
+		if ( _parts.length > 1 ) {
+			var _timeParts = _parts[ 1 ].split( ':' );
+			_dateObj.setHours( _timeParts[ 0 ] );
+			_dateObj.setMinutes( _timeParts[ 1 ] );
+			if ( _timeParts.length > 2 ) {
+				_dateObj.setSeconds( _timeParts[ 2 ] );
+			}
+		}
+	}
+	return _dateObj;
+}
+var ajaxCropEmptyVal = function () {
+	$( '.fileEdite_area img' ).each( function () {
+		if ( $( this ).attr( 'src' ).indexOf( 'crop.do' ) != -1 ) {
+			var $this = $( this );
+			var $thisSrc = $this.attr( 'src' );
+			var $params = {
+				width : $.parseInt( $this.data( "params" ).naturalWidth ) ,
+				height : $.parseInt( $this.data( "params" ).naturalHeight ) ,
+				encSvrFileNm : new RegExp( '[\?&amp;]encSvrFileNm=([^&amp;#]*)' ).exec( $thisSrc )[ 1 ]
+			};
+			if ( $params.encSvrFileNm == '' ) {
+				$this.css( 'width' ,'81px' );
+				$this.parent().css( {
+					'text-align' : 'center' ,
+					'overflow' : 'hidden'
+				} );
+			} else {
+				$this.css( 'width' ,'auto' );
+				$this.parent().css( {
+					'text-align' : 'center' ,
+					'overflow' : 'hidden'
+				} );
+			}
+		}
+	} );
+};
+/*
+ * charByteSize(ch) : 한글자에 대한 byte를 계산합니다. getByteLength(s) : 입력된 글자 전체의 byte를 계산해서 알려줍니다. cutByteLength(s) : 원하는 byte 만큼 글자를 잘라서 반환합니다.
+ */
+var calByte = {
+	getByteLength : function ( str ) {
+		if ( str == null || str.length == 0 ) { return 0; }
+		var size = 0;
+		for ( var i = 0 ; i < str.length ; i++ ) {
+			size += this.charByteSize( str.charAt( i ) );
+		}
+		return size;
+	} ,
+	cutByteLength : function ( str ,len ) {
+		if ( str == null || str.length == 0 ) { return 0; }
+		var size = 0;
+		var rIndex = str.length;
+		for ( var i = 0 ; i < str.length ; i++ ) {
+			size += this.charByteSize( str.charAt( i ) );
+			if ( size == len ) {
+				rIndex = i + 1;
+				break;
+			} else if ( size > len ) {
+				rIndex = i;
+				break;
+			}
+		}
+		return str.substring( 0 ,rIndex );
+	} ,
+	charByteSize : function ( ch ) {
+		if ( ch == null || ch.length == 0 ) { return 0; }
+		var charCode = ch.charCodeAt( 0 );
+		if ( charCode <= 0x00007F ) {
+			return 1;
+		} else if ( charCode <= 0x0007FF ) {
+			return 2;
+		} else if ( charCode <= 0x00FFFF ) {
+			return 3;
+		} else {
+			return 4;
+		}
+	}
+};
+// 백그라운드 실행오류로 인해 worker.js로 변경
+var newTimer = {
+	initMinute : 0 ,
+	remainSecond : 0 ,
+	remainMinute_ : 0 ,
+	remainSecond_ : 0 ,
+	clearTime : function ( min ) {
+		initMinute = min;
+		remainSecond = min * 60;
+	} ,
+	setTimer : function () {
+		const worker = new Worker( '/common/common/worker.js' );
+		if ( localStorage.getItem( "autoLogintreset" ) == "Y" ) {
+			localStorage.setItem( "autoLogintreset" ,"N" );
+			remainSecond = initMinute * 60;
+			min = 20;
+		}
+		if ( remainSecond > 0 ) {
+			worker.onmessage = function(event) {
+				// 타이머 실행 중에 Worker로부터 받은 메시지를 출력
+				remainSecond--;
+				remainMinute_ = parseInt( remainSecond / 60 );
+				remainSecond_ = remainSecond % 60;
+				$( "#timer" ).empty();
+				$( "#timer" ).append( newTimer.Lpad( remainMinute_ ,2 ) + ":" + newTimer.Lpad( remainSecond_ ,2 ) ); // hh:mm 표기
+				if ( 1 > remainSecond ) {
+					// location.href = '/comm/login/user/autoLogout.do';
+					location.href = '/non/index.do';
+				}
+			};
+			// sessionStorage.setItem("autoLogintSec",remainSecond);
+		} else {
+			// alert('일정시간동안 시스템을 사용하지 않아, 개인정보 보호 차원에서 자동으로 로그아웃 처리 하였습니다.');
+			// location.href = '/comm/login/user/autoLogout.do';
+			location.href = '/non/index.do';
+		}
+	} ,
+	Lpad : function ( str ,len ) {
+		str = str + "";
+		while ( str.length < len ) {
+			str = "0" + str;
+		}
+		return str;
+	}
+}

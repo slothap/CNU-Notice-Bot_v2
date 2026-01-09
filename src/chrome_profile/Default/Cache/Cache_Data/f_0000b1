@@ -1,0 +1,372 @@
+
+jQuery.fn.extend( {
+	"survValidate" : function () {
+		console.log("SURV validate!");
+		var lang = $( this ).attr( "lang" );
+		var errorMsgList = new Array();
+		var unmaskList = new Array();
+		$( this ).find( ".VALIDATE_ERROR_MSG" ).removeClass( "VALIDATE_ERROR_MSG" );
+		var dpCheck = function ( object ) {
+			for ( var i = 0 ; i < errorMsgList.length ; i++ ) {
+				if($.nvl( $( object ).classData().ime ,'' ).match( "file|imageEdit" )){
+					return true;
+				}else {
+					if($( object ).is( "[type='checkbox']" ) && $( object ).attr( "id" ) != 'prsnAgree'){
+						if ( errorMsgList[ i ].node.attr( "id" ) == $( object ).attr( "id" ) ) { return false; }
+					}else{
+						if ( errorMsgList[ i ].node.attr( "name" ) == $( object ).attr( "name" ) ) { return false; }
+					}
+				}
+				/*else if ( $( object ).is( "[type='radio']" ) ) {
+					if ( errorMsgList[ i ].node.attr( "name" ) == $( object ).attr( "name" ) ) { return false; }
+				} else if ( $( object ).is( "[type='checkbox']" ) && errorMsgList[ i ].node.attr( "name" ) != null && errorMsgList[ i ].node.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) == $( object ).attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) ) {
+					console.log("a");
+					console.log(" $( object ) ==== " ,  $( object ).attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ));
+					console.log("errorMsgList ==== ", errorMsgList[ i ].node.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ))
+					return false; }*/
+			}
+			return true;
+		};
+		if ( $( this ).find( "[class*=\\{][class*=\\}]" ).length ) {
+			$( this ).find( "[class*=\\{][class*=\\}]" ).each( function () {
+				var $this = $( this );
+				//에러표시 초기화
+				if ( $this.is( ":radio,:checkbox" ) ) {
+					$this.parent().parent().parent().css( "border" ,"" );
+					$this.parent().parent().parent().removeClass( "VALIDATE_ERROR_MSG" );
+				} else {
+					$this.css( "border" ,"" );
+					$this.removeClass( "VALIDATE_ERROR_MSG" );
+				}
+				if ( ( !$this.is( ":visible" ) || $this.is( ":hidden" ) ) && !$this.is( ".ui-tabs" ).length ) {
+					//if ( $this.parent( "label" ) &&  $this.is( "[type='radio']" ) && $this.is( "[type='checkbox']" ) ) { return true; }
+					//checkbox, radio는 checked의 판단을visible로 하기때문에 상위 부모의 visible여부로 판단한다.
+					if ( !$this.is( "[type='radio']" ) && !$this.is( "[type='checkbox']" ) ){
+						return true;
+					} else {
+						if( $this.parent( "label" ) && !$this.parent( "label" ).is( ":visible" ) ){
+							return true;
+						}
+					}
+				};
+				/*if ( ( !$this.is( ":visible" ) || $this.is( ":hidden" ) ) && !$this.parents( ".ui-tabs" ).length ) {
+					if ( $this.parent( "label" ) && !$this.is( "[type='radio']" ) && !$this.is( "[type='checkbox']" ) ) { return true; }
+				};*/
+				if ( $this.is( "select" ) && !$this.find( "option" ).not( "[value='']" ).length ) return;
+				if ( $this.is( ":button" ) ) return;
+				if ( $this.get( 0 ).disabled ) return true;
+				if ( !dpCheck( $this ) ) return;
+				var info = $this.classData();
+				$this = info.target ? $( info.target ) : $this;
+				if ( info.required ) {
+					if(($this.get( 0 ).type == null && info.ime != 'file' && info.ime !='fileOne' && info.ime !='imageEdit')) return;
+					if( $.nvl( info.ime ,'' ).match( "file|imageEdit" ) ){
+						var nofile;
+						if(info.ime == 'imageEdit'){
+							var params = $this.data('setting');
+						}else{
+							var params = $this.data('params');
+							if($this.find(".ajax-file-upload-statusbar:visible").length == 0)
+							nofile = 'Y';
+						}
+						if($this.find("input[name^="+params.name+"]").length == 0 || nofile == 'Y'){
+							errorMsgList.push( {
+								"node" : $this.attr("name",params.name) ,
+								"msg" : info.msg ? info.msg : "[" + params.title + "]항목을 입력해주세요."
+							} );
+						}
+					}else if ( $this.get( 0 ).type.match( /radio|checkbox/ ) ) {
+						var chkLen = 0;
+						if($(  $this ).is( "[type='checkbox']" )&& $this.attr( "id" ) != 'prsnAgree'){
+							var chkNum = 0;
+							$( $this.get( 0 ).form ).find("."+$this.attr( "id" )).each(function(){
+								if($( this).is(":checked"))
+									chkNum++;
+							});
+							chkLen = chkNum;
+						}else{
+							chkLen = $( $this.get( 0 ).form ).find( "input[name=\"" + $this.attr( "name" ) + "\"]:enabled:checked" ).length;
+						}
+//						if ( $this.attr( "name" ).match( /\[[0-9]+\]/ ) && !$this.is( "[type='radio']" ) ) {
+//							chkLen = $( $this.get( 0 ).form ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + "):enabled:checked" ).length;
+//						} else {
+//							chkLen = $( $this.get( 0 ).form ).find( "input[name=\"" + $this.attr( "name" ) + "\"]:enabled:checked" ).length;
+//						}
+						if ( info.minlength && $this.get( 0 ).type.match( /checkbox/ ) && chkLen < info.minlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.minlength + "개 이상 선택해주세요."
+							} );
+						} else if ( info.maxlength && $this.get( 0 ).type.match( /checkbox/ ) && chkLen > info.maxlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.maxlength + "개 이내로 선택해주세요."
+							} );
+						} else if ( chkLen <= 0 ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : info.msg ? info.msg : "[" + $this.attr( "title" ) + "]항목을 선택해주세요."
+							} );
+						}
+					} else if( info.ime == 'byte' && calByte.getByteLength( $this.val() ) < info.minByte ){
+						errorMsgList.push( {
+							"node" : $this ,
+							"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.minByte + "자 이상 입력해주세요."
+						} );
+					} else {
+						if ( info.minlength && $this.val().length < info.minlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : $this.is( "select" ) || $this.is( "[type='file']" ) ? "[" + $this.attr( "title" ) + "]항목을 " + info.minlength + "개 이상 선택해주세요." : "[" + $this.attr( "title" ) + "]항목을 " + info.minlength + "자 이상 입력해주세요."
+							} );
+							// api등록완료
+						} else if ( $.nvl( info.ime ,'' ).match( "num|float|price|year" ) && $.parseInt( $this.val().replace( /[^0-9.]/g ,"" ) ) < info.minvalues ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.minvalues + "이상 입력해주세요."
+							} );
+						} else if ( info.maxlength && $this.val().length > info.maxlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : $this.is( "select" ) || $this.is( "[type='file']" ) ? "[" + $this.attr( "title" ) + "]항목을 " + info.maxlength + "개 이내로 선택해주세요." : "[" + $this.attr( "title" ) + "]항목을 " + info.maxlength + "자 이내로 입력해주세요."
+							} );
+						} else if ( info.required && !$this.val() ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : info.msg ? info.msg : $this.is( "select" ) || $this.is( "[type='file']" ) ? "[" + $this.attr( "title" ) + "]항목을 선택해주세요." : "[" + $this.attr( "title" ) + "]항목을 입력해주세요."
+							} );
+						}
+					}
+					if ( info.sumPerc ) {
+						if ( $this.is( "[type='text']" ) ) {
+							var sum = 0;
+							$( $this.get( 0 ).form ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + ")" ).each( function () {
+								sum += $.parseInt( $( this ).val() );
+							} );
+							if ( info.sumPerc != sum ) {
+								errorMsgList.push( {
+									"node" : $this ,
+									"msg" : "[" + $this.attr( "title" ) + "]항목의 총 합계를 " + info.sumPerc + "%로 설정해주세요."
+								} );
+							}
+						}
+					}
+				}
+				/**
+				 * 대상비교
+				 */
+				if ( info.eq ) {
+					if ( $this.val() != $( info.eq ).val() ) {
+						errorMsgList.push( {
+							"node" : $this ,
+							"msg" : "[" + $( info.eq ).attr( "title" ) + "],[" + $this.attr( "title" ) + "] 값이\n서로 일치하지 않습니다."
+						} );
+					}
+				}
+				/**
+				 * 입력 형식비교
+				 */
+				if ( info.ime && $this.val() ) {
+					var mat = null;
+					var imeMsg = null;
+					// api등록완료
+					if ( info.ime == "kor" ) {
+						mat = /^[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "korEng" ) {
+						mat = /^[ㄱ-ㅎ|ㅏ-ㅣ|가-힣|a-zA-Z]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글/영문만 입력이 가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "korEngNum" ) {
+						mat = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣|a-zA-Z0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글/영문/숫자만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "korNum" ) {
+						mat = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣|0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글/숫자만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "eng" ) {
+						mat = /^[a-zA-Z]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "engNum" ) {
+						mat = /^[a-zA-Z0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문/숫자만 입력가능합니다."
+						// api등록완료;
+					} else if ( info.ime == "commCode" ) {
+						mat = /^[a-zA-Z0-9\_\-]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문/숫자와 특수문자(_)만 입력가능합니다.";
+					} else if ( info.ime == "domain" ) {
+						mat = /^(((http(s?))\:\/\/)?)([0-9a-zA-Z\-]+\.)+[a-zA-Z]{2,6}(\:[0-9]+)?(\/\S*)?$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 홈페이지 주소 형식으로 작성해 주세요. http:// 또는 https:// 를 포함한 도메인 주소를 입력해 주세요.";
+					} else if ( info.ime == "email" ) {
+						mat = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-zA-Z]{2,6}(?:\.[a-zA-Z]{2})?)$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 이메일 형식으로 입력해주세요.";
+					} else if ( info.ime == "emailend" ) {
+						mat = /^((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-zA-Z]{2,6}(?:\.[a-zA-Z]{2})?)$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 이메일 형식으로 입력해주세요.";
+					} else if ( info.ime == "json" ) {
+						mat = /^\{\"(.+)\"\:(.+)\}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목에 데이터 형식이 잘못되엇습니다.";
+					} else if ( info.ime == "password" ) {
+						mat = /^([a-zA-Z0-9]){6,16}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문,숫자를 혼합하여 6~16자 이내로 입력해주세요.";
+					} else if ( info.ime == "pwd" ) {
+						var absValidate = null;
+						absValidate= $this.absValidate( {
+						title : $this.attr( "title" ),
+						url : null ,
+						userInfoYn : [ "userSsoId" ,"userMptel" ,"userEml" ,"userTelno" ] , // 배열로 변경
+						specialChk : true , // 특수문자 체크( 지정설정 사용중 )
+						moreThan3Base : true , // 문자,숫자 3자이상 연속
+						moreThan3KB : true , // 키보드 3자이상 연속
+						strBetween : true , // 문자길이 10~ 20 사이
+						moreThan2Type : true // 문자, 숫자, 영어(대, 소) 2가지 이상 혼용
+					} );
+					if( absValidate == ""){ mat = false;}
+					else{ mat = true;}
+					imeMsg = absValidate;
+				} else if ( info.ime == "userid" ) {
+						mat = /^[a-z0-9\_]{4,12}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문소문자, 숫자, 특수기호(_)를 사용하여 4~12자 이내로 입력해주세요.";
+					} else if ( info.ime == "num" ) {
+						mat = /^[0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 숫자만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "float" ) {
+						mat = /^[0-9.]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 숫자만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "price" ) {
+						//2019-08-23 김형섭 (숫자 음수 허용)
+						//mat = /^[0-9\,]+$/;
+						mat = /(?!^-)[0-9\,]+$/;
+						//------------------------
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 숫자만 입력가능합니다.";
+						unmaskList.push( $this );
+						// api등록완료
+					} else if ( info.ime == "year" ) {
+						mat = /^[0-9]{4}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 1900와 같은 년도형식으로 입력해주세요.";
+						// api등록완료
+					} else if ( info.ime == "custmNb" ) {
+						mat = /^([0-9]{3})-([0-9]{2})-([0-9]{5})$/g;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 사업자번호(예:000-00-00000) 형식으로 입력해주세요.";
+						// api등록완료
+					} else if ( info.ime == "tel" ) {
+						mat = /^[0-9]{2,3}-[0-9]{3,4}-[0-9]{4}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 전화번호 형식으로 작성해 주세요.(예:02-1234-1234)";
+					} else if ( info.ime == "time" ) {
+						mat = /^([0-9]{2})\:([0-9]{2})$/g;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 시간형식(예:10:10)으로 입력해주세요.";
+					} else if ( info.ime == "date" ) {
+						mat = /^[0-9]{4}\.[0-9]{2}\.[0-9]{2}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목 형식이 잘못되엇습니다.(예:1999.09.09)";
+					} else if ( info.ime == "dateHHmm" ) {
+						mat = /^[0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}\:[0-9]{2}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목 형식이 잘못되엇습니다.(예:1999.09.09 12:01)";
+					}
+					//2019-07-16 김형섭 추가
+					///^\d{3}-\d{3,4}-\d{4}$/;
+					else if ( info.ime == "phon") {
+						//mat =  /^01([0|1|6|7|8|9]?)-?([0-9]{3,4})-?([0-9]{4})$/; ('-' 상관없이 )
+						mat =  /^\d{3}-\d{3,4}-\d{4}$/; //('-' 필수 )
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 휴대폰 형식으로 작성해 주세요.(예:010-1234-1234)";
+					}
+					if ( !$this.val().match( mat ) && mat ) {
+						errorMsgList.push( {
+							"node" : $this ,
+							"msg" : imeMsg
+						} );
+					}
+				}
+			} );
+		}
+		if ( errorMsgList.length ) {
+			var msg;
+/*			if ( global.isMobile ) {
+				msg = "";dddd
+				$.each( errorMsgList ,function ( key ,entry ) {
+					msg += entry.msg + "\r\n";
+					if ( entry.node.is( ":radio,:checkbox" ) ) {
+						entry.node.parent().addClass( "VALIDATE_ERROR_MSG" );
+					} else {
+						entry.node.addClass( "VALIDATE_ERROR_MSG" );
+					}
+				} );
+			} else {
+				msg = "<ul class='mlt_msg'>";
+				$.each( errorMsgList ,function ( key ,entry ) {
+					msg += ( "<li><span class='required'></span> " + entry.msg + "</li>" );
+					if ( entry.node.is( ":radio,:checkbox" ) ) {
+						entry.node.parent().css( "border" ,"1px solid red" );
+						entry.node.parent().addClass( "VALIDATE_ERROR_MSG" );
+					} else {
+						entry.node.css( "border" ,"1px solid red" );
+						entry.node.addClass( "VALIDATE_ERROR_MSG" );
+					}
+				} );
+				msg += "</ul>";
+				msg = msg.replace( /(.+)\\r\\n$/gi ,"$1" );
+			}*/
+			if ( global.isMobile ) {
+				msg = "";
+				$.each( errorMsgList ,function ( key ,entry ) {
+					msg += entry.msg + "\r\n";
+					if ( entry.node.is( ":radio,:checkbox" ) ) {
+						entry.node.parent().addClass( "VALIDATE_ERROR_MSG" );
+					} else {
+						entry.node.addClass( "VALIDATE_ERROR_MSG" );
+					}
+				} );
+			} else {
+				msg = "<ul class='mlt_msg'>";
+				$.each( errorMsgList ,function ( key ,entry ) {
+					msg += ( "<li><span class='required'></span> " + entry.msg + "</li>" );
+					if ( entry.node.is( ":radio,:checkbox" ) ) {
+						if(entry.node.hasClass('chkParent')){
+							entry.node.parent().parent().css( "border" , "2px solid #fff8f8");
+							entry.node.parent().parent().css( "background-color" , "#fff8f8");
+							entry.node.parent().parent().addClass( "VALIDATE_ERROR_MSG" );
+						}else{
+							/*entry.node.parent().css( "border" ,"1px solid red" );
+							entry.node.parent().addClass( "VALIDATE_ERROR_MSG" );*/
+							//라디오 체크박스는 상위(label) 상위(li) 상위(ul)이여서 변경
+							entry.node.parent().parent().parent().css( "border" ,"1px solid red" );
+							entry.node.parent().parent().parent().addClass( "VALIDATE_ERROR_MSG" );
+						}
+
+					} else {
+						entry.node.css( "border" ,"1px solid red" );
+						entry.node.addClass( "VALIDATE_ERROR_MSG" );
+					}
+				} );
+				msg += "</ul>";
+				msg = msg.replace( /(.+)\\r\\n$/gi ,"$1" );
+			}
+			$.alert( msg ,{
+				"width" : 800 ,
+				"close" : function () {
+					if ( errorMsgList[ 0 ].node.parents( ".ui-tabs" ).length ) {
+						errorMsgList[ 0 ].node.parents( ".ui-tabs" ).find( ".ui-tabs-nav li a" ).each( function ( index ) {
+							if ( $( $( this ).attr( "href" ).replace( /(.*)?\#(.+)/gi ,"#$2" ) ).find( errorMsgList[ 0 ].node ).length ) {
+								errorMsgList[ 0 ].node.parents( ".ui-tabs" ).tabs( "option" ,"active" ,index );
+								errorMsgList[ 0 ].node.focus();
+							}
+						} );
+					} else {
+						errorMsgList[ 0 ].node.focus();
+					}
+				}
+			} );
+		} else {
+			$.each( unmaskList ,function ( key ,entry ) {
+				/*
+				 * if ( entry.classData().ime == "price" ) { entry.val( entry.val().replace( /\,/gi ,"" ) ); }
+				 */
+			} );
+		}
+		return errorMsgList.length <= 0;
+	}
+} );

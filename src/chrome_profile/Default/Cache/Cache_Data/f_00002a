@@ -1,0 +1,814 @@
+var global = {
+	isMobile : false
+	,contextPath : ""
+	,realDev : ""
+};
+( function ( $ ) {
+	$.clipboard = function ( str ) {
+		str = str ? str : $(location).attr('href');
+		console.log("href: "+$(location).attr('href'));  // 파라 미터까지 전부
+		console.log("protocol: "+$(location).attr('protocol'));  // http:
+		console.log("host: "+$(location).attr('host'));  // localhost:8080
+		console.log("pathname: "+$(location).attr('pathname'));  // board/abcList
+		console.log("search: "+$(location).attr('search'));  // ?key=value
+		var ie = ( document.all ) ? true : false;
+		if ( ie ) {
+			window.clipboardData.setData( "Text" ,str );
+			$.alert( "주소가 복사되었습니다.\'Ctrl+V\'를 눌러 붙여넣기 해주세요." );
+		} else {
+			prompt( "이 글의 트랙백 주소입니다. Ctrl+C를 눌러 클립보드로 복사하세요" ,str );
+		}
+	};
+	$.telFormat = function ( str ) {
+		str = str.replace( /[^0-9]/g ,"" );
+		return str.replace( /^(02.{0}|^01.{1}|[0-9]{3})(\-)?([0-9]+)(\-)?([0-9]{4})/ ,"$1-$3-$5" );
+	};
+	$.custmNbFormat = function ( str ) {
+		str = str.replace( /[^0-9]/g ,"" );
+		return str.replace( /^([0-9]{3})(\-)?([0-9]{2})(\-)?([0-9]{5})/ ,"$1-$3-$5" );
+	};
+	$.numberFormat = function ( vals ) { // 숫자형에 콤마삽입
+		var input = String( vals );
+		// 2019-08-23 김형섭 (음수의 경우 -허용) 기존소스
+		// input = input.replace( /[^0-9]/g ,"" );
+		// 변경---------------------------------------
+		input = input.replace( /(?!^-)[^0-9.]/g ,"" );
+		// ------------------------------------------
+		var reg = /(\-?\d+)(\d{3})($|\.\d+)/;
+		if ( reg.test( input ) ) {
+			return input.replace( reg ,function ( str ,p1 ,p2 ,p3 ) {
+				return $.numberFormat( p1 ) + "," + p2 + "" + p3;
+			} );
+		} else {
+			return input;
+		}
+	};
+	$.dateFormat = function ( date ,dateType ) {
+		if ( date instanceof String ) data = new Date( date );
+		if ( !date ) return date;
+		var zf = function ( obj ,len ) {
+			var string = function ( str ,len ) {
+				var s = '' ,i = 0;
+				while ( i++ < len ) {
+					s += str;
+				}
+				return s;
+			};
+			var str = obj.toString();
+			return string( "0" ,len - str.length ) + obj;
+		};
+		var weekName = [ "일요일" ,"월요일" ,"화요일" ,"수요일" ,"목요일" ,"금요일" ,"토요일" ];
+		return dateType.replace( /(yyyy|yy|MM|dd|E|hh|mm|ss|a\/p)/gi ,function ( $1 ) {
+			switch ( $1 ) {
+				case "yyyy" :
+					return date.getFullYear();
+				case "yy" :
+					return zf( date.getFullYear() % 1000 ,2 );
+				case "MM" :
+					return zf( date.getMonth() + 1 ,2 );
+				case "dd" :
+					return zf( date.getDate() ,2 );
+				case "E" :
+					return weekName[ date.getDay() ];
+				case "HH" :
+					return zf( date.getHours() ,2 );
+				case "hh" :
+					return zf( ( h = date.getHours() % 12 ) ? h : 12 ,2 );
+				case "mm" :
+					return zf( date.getMinutes() ,2 );
+				case "ss" :
+					return zf( date.getSeconds() ,2 );
+				case "a/p" :
+					return date.getHours() < 12 ? "오전" : "오후";
+				default :
+					return $1;
+			}
+		} );
+	};
+	// 랜덤아이디 생성
+	$.rand = function () {
+		var chars = '0123456789abcdef'.split( '' );
+		var uuid = [] ,rnd = Math.random ,r;
+		uuid[ 8 ] = uuid[ 13 ] = uuid[ 18 ] = uuid[ 23 ] = '-';
+		uuid[ 14 ] = '4';
+		for ( var i = 0 ; i < 36 ; i++ ) {
+			if ( !uuid[ i ] ) {
+				r = 0 | rnd() * 16;
+				uuid[ i ] = chars[ ( i == 19 ) ? ( r & 0x3 ) | 0x8 : r & 0xf ];
+			}
+		}
+		return 'uuid' + uuid.join( '' ).replace( /\-/gi ,"" );
+	};
+	$.byteSize = function ( str ) {
+		var tcount = 0;
+		var tmpStr = new String( str );
+		var temp = tmpStr.length;
+		var onechar;
+		for ( var k = 0 ; k < temp ; k++ ) {
+			onechar = tmpStr.charAt( k );
+			if ( escape( onechar ).length > 4 ) {
+				tcount += 2;
+			} else {
+				tcount += 1;
+			}
+		}
+		return tcount;
+	};
+	$.textHTML = function ( str ) {
+		return str.replace( /\n/gi ,"<br/>" ).replace( /\t/gi ,"&emsp;" ).replace( /\s/gi ,"&nbsp;" );
+	};
+	$.nvl = function ( object ,def ) {
+		return object ? object : def;
+	};
+	/* [YK] 에디터 내용 표출 작업 - javaUtil에 내용 치환 및 class 지정 div 처리 */
+	$.unescapeContDivHTML = function (values) {
+		if ( !values ) return '';
+		var cssTxt = "<link rel='stylesheet' type='text/css' href='"+ global.contextPath+ "/common/plugin/ckeditor/contentsViewEdit.css' media='all' />";
+		return cssTxt + "<div class='ck-contentEditDiv'>" + $.unescapeHTML(values) + "</div>";
+	};
+	$.unescapeHTML = function ( values ) {
+		if ( !values ) return '';
+		values = values.replace( /&lt;/gi ,"<" );
+		values = values.replace( /&gt;/gi ,">" );
+		values = values.replace( /&amp;/gi ,"&" );
+		values = values.replace( /&#38;/gi ,"&" );
+		values = values.replace( /&quot;/gi ,"\"" );
+		values = values.replace( /&#34;/gi ,"\"" );
+		values = values.replace( /&#39;/gi ,"'" );
+		values = values.replace( /&#36;/gi ,"\\$" );
+		values = values.replace( /<base/gi ,"<span" );
+		return values;
+	};
+	$.time = function ( append ) {
+		return append ? append + new Date().getTime().toString() : new Date().getTime().toString();
+	};
+	$.encode = function () {
+		return encodeURIComponent( str );
+	};
+	$.JSONEncode = function ( data ) {
+		try {
+			data = $.parseJSON( data.replace( /\&\#034\;/ ,'"' ).replace( /\'/gi ,'"' ) );
+		} catch ( e ) {
+			data = {
+				"result" : 0
+			};
+		}
+		return data;
+	};
+	$.JSONDecode = function ( data ) {
+		return $.toJSON( data );
+	};
+	$.parseInt = function ( str ) {
+		if ( isNaN( str ) ) return 0;
+		return parseInt( str ,10 ) > 0 ? parseInt( str ,10 ) : 0;
+	};
+	$.parseFloat = function ( str ) {
+		if ( isNaN( str ) ) return 0;
+		try {
+			return parseFloat( str );
+		} catch ( e ) {
+			return 0;
+		}
+	};
+	$.upload = function ( action ) {
+		$.ajax( {
+			"url" : global.contextPath + "/common/cmnFile/dialog/uploadForm.do" ,
+			"dataType" : "text" ,
+			"success" : function ( html ) {
+				var $html = $( html );
+				$html.layout( {
+					"title" : "파일업로드" ,
+					"width" : $( window ).width() > 800 ? 800 : 300 ,
+					"create" : function ( $this ) {
+						$( this ).find( "[name='upload']" ).change( function () {
+							$html.find( "label" ).text( $( this ).val() );
+						} );
+					} ,
+					"action" : function ( result ) {
+						$html.dialog( 'destroy' ).remove();
+						$html.find( "form" ).ajaxSubmit( {
+							contentType : "application/x-www-form-urlencoded;charset=UTF-8" ,
+							dataType : "json" ,
+							success : action
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	$.openWindow = function ( options ) {
+		if ( options.width == undefined || options.width == "" ) {
+			options.width = 1024;
+		}
+		if ( options.height == undefined || options.height == "" ) {
+			options.height = 768;
+		}
+		if ( options.layout == undefined || options.layout == "" ) {
+			options.layout = "resizable=no, toolbar=no, menubar=no, location=no, status=no, scrollbars=yes";
+		}
+		var dualScreenLeft = window.screenLeft != undefined ? window.screenLeft : screen.left;
+		var dualScreenTop = window.screenTop != undefined ? window.screenTop : screen.top;
+		var screenWidth = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth ? document.documentElement.clientWidth : screen.width;
+		var screenHeight = window.innerHeight ? window.innerHeight : document.documentElement.clientHeight ? document.documentElement.clientHeight : screen.height;
+		var left = ( screenWidth / 2 ) - ( options.width / 2 ) + dualScreenLeft;
+		var top = ( screenHeight / 2 ) - ( options.height / 2 ) + dualScreenTop;
+		var popupWindowName = "__COMMON_WINDOW__" + Math.floor( ( Math.random() * 10000000000000000 ) + 1 );
+		if ( options.id != undefined && options.id != "" ) {
+			popupWindowName = options.id;
+		}
+		var url = options.context != undefined ? convertContext( options.context ) + "/" + options.url : options.url;
+		var elements = "";
+		if ( $.isArray( options.params ) ) {
+			$.each( options.params ,function ( index ,params ) {
+				elements += "<input type='hidden' name='" + params.name + "' value='" + params.value + "'>";
+			} );
+		} else {
+			if ( options.params != undefined && options.params != null ) {
+				$.each( options.params ,function ( name ,value ) {
+					elements += "<input type='hidden' name='" + name + "' value='" + value + "'>";
+				} );
+			}
+		}
+		var $form = $( "<form method='get' action='" + url + "' target='" + popupWindowName + "'>" + elements + "</form>" ).appendTo( "body" );
+		var w = window.open( "" ,popupWindowName ,"top=" + top + ", left=" + left + ", width=" + options.width + ", height=" + options.height + ", " + options.layout );
+		$form.submit().remove();
+		return w;
+	};
+	$.imageView = function ( src ) {
+		$( "<div>" ).append( $( "<img>" ).attr( {
+			"src" : src ,
+			"width" : "100%"
+		} ) ).layout( {
+			"title" : "Image View" ,
+			"width" : 1000 ,
+		} );
+	};
+	// 김대근 추가 - JQuery Alert, Confirm
+	$.alert2 = function ( msg ,params ) {
+		params = params ? params : {};
+		if ( global.isMobile ) {
+			alert( msg );
+			if ( params.close ) {
+				params.close();
+			}
+		} else {
+			$( "<div class='di_alert'>" ).attr( {
+				"id" : "DIALOG_ALERT"
+			} ).addClass( "dialog" ).html( msg.replace( /(\r)?\n/gi ,"</br>" ) ).layout( $.extend( {
+				"title" : "메세지" ,
+				"width" : $( window ).width() > 600 ? 500 : 300 ,
+			} ,$.extend( params ,{
+				/* "position" : "center" */
+			} ) ) );
+			$( '.ui-dialog' ).addClass( 'ui-dialog-alert-wrap' );
+			$( '.ui-dialog-buttonset button' ).addClass( 'di_btn_conf' );
+		}
+	};
+	$.confirm2 = function ( msg ,action ,params ) {
+		if ( global.isMobile ) {
+			if ( confirm( msg ) ) {
+				action();
+			}
+			return false;
+		} else {
+			params = params ? params : {};
+			$( "<div class='di_confirm'>" ).attr( {
+				"id" : "DIALOG_CONFIRM"
+			} ).addClass( "dialog" ).html( msg.replace( /(\r)?\n/gi ,"</br>" ) ).layout( $.extend( {
+				"title" : "확인" ,
+				"width" : $( window ).width() > 600 ? 500 : 300 ,
+				"buttons" : [{
+					text : "확인" ,
+					addClass : "di_btn_conf" ,
+					click : function () {
+						action();
+						$( "#DIALOG_CONFIRM" ).dialog( 'close' );
+					}
+				}, {
+					text : "취소" ,
+					addClass : "di_btn_close" ,
+					click : function () {
+						$( "#DIALOG_CONFIRM" ).dialog( 'close' );
+					}
+				} ]
+			} ,$.extend( params ,{
+				"position" : {
+					my: "center",
+					at: "center",
+				}
+			} ) ) );
+			$( '.ui-dialog' ).addClass( 'ui-dialog-conf-wrap' );
+		}
+	};
+	// 취소 기능 있을때
+	$.confirm3 = function ( msg ,action ,action2 ,params ) {
+		if ( global.isMobile ) {
+			if ( confirm( msg ) ) {
+				action();
+			} else {
+				action2();
+			}
+			return false;
+		} else {
+			params = params ? params : {};
+			$( "<div class='di_confirm'>" ).attr( {
+				"id" : "DIALOG_CONFIRM"
+			} ).addClass( "dialog" ).html( msg.replace( /(\r)?\n/gi ,"</br>" ) ).layout( $.extend( {
+				"title" : "확인" ,
+				"width" : $( window ).width() > 600 ? 500 : 300 ,
+				"buttons" : [{
+					text : "확인" ,
+					addClass : "di_btn_conf" ,
+					click : function () {
+						action();
+						$( "#DIALOG_CONFIRM" ).dialog( 'close' );
+					}
+				}, {
+					text : "취소" ,
+					addClass : "di_btn_close" ,
+					click : function () {
+						action2();
+						$( "#DIALOG_CONFIRM" ).dialog( 'close' );
+					}
+				} ]
+			} ,$.extend( params ,{
+				"position" : {
+					my: "center",
+					at: "center",
+				}
+			} ) ) );
+			$( '.ui-dialog' ).addClass( 'ui-dialog-conf-wrap' );
+		}
+	};
+	$.daumZipcode = function ( zipCode, addr ) {
+		daum.postcode.load( function () {
+			new daum.Postcode( {
+				oncomplete : function ( data ) {
+					// 지번일경우
+					if ( data.userSelectedType == 'R' ) {
+						$( zipCode ).val( data.zonecode );
+						$( addr ).val( data.address );
+					} else {
+						$( zipCode ).val( data.zonecode );
+						$( addr ).val( data.jibunAddress );
+					}
+				}
+			} ).open();
+		} );
+	};
+	$.timeMinMaxChk = function (frObj, toObj, type, info){
+		var minTime = '09:00am';
+		var maxTime = '18:00pm';
+		if(info){
+			minTime = (info.startTime) ? info.startTime : '09:00am';
+			maxTime = (info.endTime) ? info.endTime : '18:00pm';
+		}
+		if(type == null || type == "min"){
+			$(frObj).timepicker({
+				'minTime' : minTime ,
+				'maxTime' : maxTime ,
+				'timeFormat' : 'H:i'
+			}).on('changeTime.timepicker', function(e) {
+				$(toObj).timepicker( "option" ,"minTime" ,$(this).val() );
+			 });
+		}
+		if(type == null || type == "max"){
+			$(toObj).timepicker({
+				'minTime' : minTime ,
+				'maxTime' : maxTime ,
+				'timeFormat' : 'H:i'
+			}).on('changeTime.timepicker', function(e) {
+				$(frObj).timepicker( "option" ,"maxTime" ,$(this).val() );
+			 });
+		}
+	};
+} )( jQuery );
+/**
+ * $("div:regex(class|input,regex")
+ */
+jQuery.expr[ ':' ].regex = function ( elem ,index ,match ) {
+	var matchParams = match[ 3 ].split( ',' ) ,validLabels = /^(data|css):/ ,attr = {
+		method : matchParams[ 0 ].match( validLabels ) ? matchParams[ 0 ].split( ':' )[ 0 ] : 'attr' ,
+		property : matchParams.shift().replace( validLabels ,'' )
+	} ,regexFlags = 'ig' ,regex = new RegExp( matchParams.join( '' ).replace( /^\s+|\s+$/g ,'' ) ,regexFlags );
+	return regex.test( jQuery( elem )[ attr.method ]( attr.property ) );
+};
+jQuery.fn.extend( {
+	"editor" : function ( params ) {
+		if ( !params ) params = {};
+		if ( CKEDITOR.env.ie && CKEDITOR.env.version < 9 ) CKEDITOR.tools.enableHtml5Elements( document );
+		CKEDITOR.config.height = params.height ? params.height : $( this ).height();
+		CKEDITOR.config.width = params.width ? params.width : 'auto';
+		CKEDITOR.config.uiColor = params.uiColor ? params.uiColor : '#DDDDDD';
+		CKEDITOR.config.disableObjectResizing = params.disableObjectResizing ? params.disableObjectResizing : true;
+		var id = $( this ).attr( "id" );
+		CKEDITOR.config.extraPlugins = 'confighelper';
+		if ( !id ) {
+			alert( "ID속성이 등록되지 않았습니다." );
+			return;
+		}
+		var wysiwygareaAvailable = isWysiwygareaAvailable() ,isBBCodeBuiltIn = !!CKEDITOR.plugins.get( 'bbcode' );
+		var editorElement = CKEDITOR.document.getById( id );
+		if ( isBBCodeBuiltIn ) {
+			editorElement.setHtml( 'Hello world!\n\n' + 'I\'m an instance of [url=http://ckeditor.com]CKEditor[/url].' );
+		}
+		if ( wysiwygareaAvailable ) {
+			CKEDITOR.replace( id );
+		} else {
+			editorElement.setAttribute( 'contenteditable' ,'true' );
+			CKEDITOR.inline( id );
+		}
+		function isWysiwygareaAvailable () {
+			if ( CKEDITOR.revision == ( '%RE' + 'V%' ) ) { return true; }
+			return !!CKEDITOR.plugins.get( 'wysiwygarea' );
+		}
+	} ,
+	"layout" : function ( params ) {
+		var $this = $( this );
+		var buttons = [];
+		params = params ? params : {};
+		if ( !$( this ).attr( "id" ) ) {
+			$( this ).attr( "id" ,"DIALOG_LAYOUT_" + new Date().getTime().toString() );
+		} else if ( $this.is( ".dialog" ) ) {
+			$( "#" + $( this ).attr( "id" ) ).remove();
+		}
+		if ( params.buttons == null ) {
+			buttons.push( {
+				text : "닫기" ,
+				addClass : "di_btn_close" ,
+				click : function () {
+					$this.dialog( 'close' );
+					// 입력dialog일때 remove안하면 입력필드가 중복이되어 문제됨
+					$this.remove();
+				}
+			} );
+			if ( params.action ) {
+				buttons.push( {
+					text : "확인" ,
+					addClass : "di_btn_conf" ,
+					click : function () {
+						if ( params.action( $this ) ) {
+							$( this ).dialog( 'close' );
+						}
+					}
+				} );
+			}
+		} else {
+			buttons = params.buttons;
+		}
+		/** a태그가 자동 포커스가 되지 않도록 수정한다. */
+		params = $.extend( {
+			"autoOpen" : true ,
+			"modal" : true ,
+			"title" : "팝업" ,
+			"close" : function ( event ,ui ) {
+				if ( $this.is( ".dialog" ) ) {
+					$this.dialog( 'destroy' ).remove();
+				} else {
+					$this.dialog( 'close' );
+				}
+				$( 'html' ).removeClass( 'popOn' );
+			} ,
+			"open" : function () {
+				$( 'html' ).addClass( 'popOn' );
+				if ( $this.is( ".dialog" ) ) {
+					$this.customTags();
+				}
+			} ,
+			"create" : function () {} ,
+			"dialogClass" : "syworksDialog" ,
+			 /* "position" : "top" , */
+			"draggable" : true ,
+			"resizable" : false ,
+			/* "appendTo" : "#contents" , */
+			"appendTo" : "body" ,
+			"buttons" : buttons
+		} ,params );
+		if ( $this.is( ".dialog" ) ) {
+			$( this ).appendTo( "body" ).dialog( params );
+		} else {
+			$( this ).dialog( params );
+		}
+		return $( this );
+	} ,
+	// validate함수에서 사용
+	"classData" : function () {
+		if ( !$( this ).attr( "class" ) ) return {};
+		return $.JSONEncode( $( this ).attr( "class" ).replace( /(.+)?(\{.+\})(.+)?/ ,"$2" ) );
+	} ,
+	"validate" : function () {
+		console.log("validate!");
+		var lang = $( this ).attr( "lang" );
+		var errorMsgList = new Array();
+		var unmaskList = new Array();
+		$( this ).find( ".VALIDATE_ERROR_MSG" ).removeClass( "VALIDATE_ERROR_MSG" );
+		var dpCheck = function ( object ) {
+			for ( var i = 0 ; i < errorMsgList.length ; i++ ) {
+				if($.nvl( $( object ).classData().ime ,'' ).match( "file|imageEdit" )){
+					return true;
+				// 체크박스의 경우 배열name에 index만 다를경우 서로다른걸로 인지 못해서 주석처리함 예) test[0].col , test[1].col << 두가지를 같은것으로 판단함
+				// 설문인 경우, survVlidate를 사용
+				// 구
+				// }else if ( $( object ).is( "[type='radio']" ) ) {
+				// if ( errorMsgList[ i ].node.attr( "name" ) == $( object ).attr( "name" ) ) { return false; }
+				// } else if ( $( object ).is( "[type='checkbox']" ) && errorMsgList[ i ].node.attr( "name" ) != null && errorMsgList[ i ].node.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) == $( object ).attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) ) { return false; }
+				// 신
+				} else if ( errorMsgList[ i ].node.attr( "name" ) != null && errorMsgList[ i ].node.attr( "name" ) == $( object ).attr( "name" ) ) { return false; }
+			}
+			return true;
+		};
+		if ( $( this ).find( "[class*=\\{][class*=\\}]" ).length ) {
+			$( this ).find( "[class*=\\{][class*=\\}]" ).each( function () {
+				var $this = $( this );
+				// 에러표시 초기화
+				if ( $this.is( ":radio,:checkbox" ) ) {
+					$this.parent().parent().parent().css( "border" ,"" );
+					$this.parent().parent().parent().removeClass( "VALIDATE_ERROR_MSG" );
+				} else {
+					$this.css( "border" ,"" );
+					$this.removeClass( "VALIDATE_ERROR_MSG" );
+				}
+				if (( !$this.is( ":visible" ) || $this.is( ":hidden" ) ) ) {
+					return true;
+				}
+				if ( $this.is( "select" ) && !$this.find( "option" ).not( "[value='']" ).length ) return;
+				if ( $this.is( ":button" ) ) return;
+				if ( $this.get( 0 ).disabled ) return true;
+				if ( !dpCheck( $this ) ) return;
+				var info = $this.classData();
+				$this = info.target ? $( info.target ) : $this;
+				if ( info.required ) {
+					if(($this.get( 0 ).type == null && info.ime != 'file' && info.ime !='fileOne' && info.ime !='imageEdit')) return;
+					if( $.nvl( info.ime ,'' ).match( "file|imageEdit" ) ){
+						var nofile;
+						if(info.ime == 'imageEdit'){
+							var params = $this.data('setting');
+						}else{
+							var params = $this.data('params');
+							if($this.find(".ajax-file-upload-statusbar:visible").length == 0)
+							nofile = 'Y';
+						}
+						if($this.find("input[name^='"+params.name+"']").length == 0 || nofile == 'Y'){
+							errorMsgList.push( {
+								"node" : $this.attr("name",params.name) ,
+								"msg" : info.msg ? info.msg : "[" + params.title + "]항목을 입력해주세요."
+							} );
+						}
+					}else if ( $this.get( 0 ).type.match( /radio|checkbox/ ) ) {
+						var chkLen = 0;
+						// 체크박스의 경우 배열name에 index만 다를경우 서로다른걸로 인지 못해서 주석처리함 예) test[0].col , test[1].col << 두가지를 같은것으로 판단함
+						// 설문인 경우, 질문문항에 따라서 한묶음으로 인식해야하므로 validate type이 surv이고, 다중선택(checkbox)일때만 조건으 다르게 처리
+						// 구
+						// if ( $this.attr( "name" ).match( /\[[0-9]+\]/ ) && !$this.is( "[type='radio']" ) ) {
+						// chkLen = $( $this.get( 0 ).form ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + "):enabled:checked" ).length;
+						// } else {
+						// chkLen = $( $this.get( 0 ).form ).find( "input[name=\"" + $this.attr( "name" ) + "\"]:enabled:checked" ).length;
+						// }
+						// 신
+						chkLen = $( $this.get( 0 ).form ).find( "input[name=\"" + $this.attr( "name" ) + "\"]:enabled:checked" ).length;
+						if ( info.minlength && $this.get( 0 ).type.match( /checkbox/ ) && chkLen < info.minlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.minlength + "개 이상 선택해주세요."
+							} );
+						} else if ( info.maxlength && $this.get( 0 ).type.match( /checkbox/ ) && chkLen > info.maxlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.maxlength + "개 이내로 선택해주세요."
+							} );
+						} else if ( chkLen <= 0 ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : info.msg ? info.msg : "[" + $this.attr( "title" ) + "]항목을 선택해주세요."
+							} );
+						}
+					} else if( info.ime == 'byte' && calByte.getByteLength( $this.val() ) < info.minByte ){
+						errorMsgList.push( {
+							"node" : $this ,
+							"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.minByte + "자 이상 입력해주세요."
+						} );
+					} else {
+						if ( info.minlength && $this.val().length < info.minlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : $this.is( "select" ) || $this.is( "[type='file']" ) ? "[" + $this.attr( "title" ) + "]항목을 " + info.minlength + "개 이상 선택해주세요." : "[" + $this.attr( "title" ) + "]항목을 " + info.minlength + "자 이상 입력해주세요."
+							} );
+							// api등록완료
+						} else if ( $.nvl( info.ime ,'' ).match( "num|float|price|year" ) && $.parseInt( $this.val().replace( /[^0-9.]/g ,"" ) ) < info.minvalues ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.minvalues + "이상 입력해주세요."
+							} );
+						} else if ( info.maxlength && $this.val().length > info.maxlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : $this.is( "select" ) || $this.is( "[type='file']" ) ? "[" + $this.attr( "title" ) + "]항목을 " + info.maxlength + "개 이내로 선택해주세요." : "[" + $this.attr( "title" ) + "]항목을 " + info.maxlength + "자 이내로 입력해주세요."
+							} );
+						} else if ( info.required && !$this.val() ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : info.msg ? info.msg : $this.is( "select" ) || $this.is( "[type='file']" ) ? "[" + $this.attr( "title" ) + "]항목을 선택해주세요." : "[" + $this.attr( "title" ) + "]항목을 입력해주세요."
+							} );
+						}
+					}
+					if ( info.sumPerc ) {
+						if ( $this.is( "[type='text']" ) ) {
+							var sum = 0;
+							$( $this.get( 0 ).form ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + ")" ).each( function () {
+								sum += $.parseInt( $( this ).val() );
+							} );
+							if ( info.sumPerc != sum ) {
+								errorMsgList.push( {
+									"node" : $this ,
+									"msg" : "[" + $this.attr( "title" ) + "]항목의 총 합계를 " + info.sumPerc + "%로 설정해주세요."
+								} );
+							}
+						}
+					}
+				}
+				/**
+				 * 대상비교
+				 */
+				if ( info.eq ) {
+					if ( $this.val() != $( info.eq ).val() ) {
+						errorMsgList.push( {
+							"node" : $this ,
+							"msg" : "[" + $( info.eq ).attr( "title" ) + "],[" + $this.attr( "title" ) + "] 값이\n서로 일치하지 않습니다."
+						} );
+					}
+				}
+				/**
+				 * 입력 형식비교
+				 */
+				if ( info.ime && $this.val() ) {
+					var mat = null;
+					var imeMsg = null;
+					// api등록완료
+					if ( info.ime == "kor" ) {
+						mat = /^[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "korEng" ) {
+						mat = /^[ㄱ-ㅎ|ㅏ-ㅣ|가-힣|a-zA-Z]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글/영문만 입력이 가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "korEngNum" ) {
+						mat = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣|a-zA-Z0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글/영문/숫자만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "korNum" ) {
+						mat = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣|0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글/숫자만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "eng" ) {
+						mat = /^[a-zA-Z]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "engNum" ) {
+						mat = /^[a-zA-Z0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문/숫자만 입력가능합니다."
+						// api등록완료;
+					} else if ( info.ime == "commCode" ) {
+						mat = /^[a-zA-Z0-9\_\-]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문/숫자와 특수문자(_)만 입력가능합니다.";
+					} else if ( info.ime == "domain" ) {
+						mat = /^(((http(s?))\:\/\/)?)([0-9a-zA-Z\-]+\.)+[a-zA-Z]{2,6}(\:[0-9]+)?(\/\S*)?$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 홈페이지 주소 형식으로 작성해 주세요. http:// 또는 https:// 를 포함한 도메인 주소를 입력해 주세요.";
+					} else if ( info.ime == "email" ) {
+						mat = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-zA-Z]{2,6}(?:\.[a-zA-Z]{2})?)$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 이메일 형식으로 입력해주세요.";
+					} else if ( info.ime == "emailend" ) {
+						mat = /^((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-zA-Z]{2,6}(?:\.[a-zA-Z]{2})?)$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 이메일 형식으로 입력해주세요.";
+					} else if ( info.ime == "json" ) {
+						mat = /^\{\"(.+)\"\:(.+)\}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목에 데이터 형식이 잘못되엇습니다.";
+					} else if ( info.ime == "password" ) {
+						mat = /^([a-zA-Z0-9]){6,16}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문,숫자를 혼합하여 6~16자 이내로 입력해주세요.";
+					} else if ( info.ime == "pwd" ) {
+						var absValidate = null;
+						absValidate= $this.absValidate( {
+						title : $this.attr( "title" ),
+						url : null ,
+						userInfoYn : [ "userSsoId" ,"userMptel" ,"userEml" ,"userTelno" ] , // 배열로 변경
+						specialChk : true , // 특수문자 체크( 지정설정 사용중 )
+						moreThan3Base : true , // 문자,숫자 3자이상 연속
+						moreThan3KB : true , // 키보드 3자이상 연속
+						strBetween : true , // 문자길이 10~ 20 사이
+						moreThan2Type : true // 문자, 숫자, 영어(대, 소) 2가지 이상 혼용
+					} );
+					if( absValidate == ""){ mat = false;}
+					else{ mat = true;}
+					imeMsg = absValidate;
+				} else if ( info.ime == "userid" ) {
+						mat = /^[a-z0-9\_]{4,12}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문소문자, 숫자, 특수기호(_)를 사용하여 4~12자 이내로 입력해주세요.";
+					} else if ( info.ime == "num" ) {
+						mat = /^[0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 숫자만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "float" ) {
+						mat = /^[0-9.]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 숫자만 입력가능합니다.";
+						// api등록완료
+					} else if ( info.ime == "price" ) {
+						// 2019-08-23 김형섭 (숫자 음수 허용)
+						// mat = /^[0-9\,]+$/;
+						mat = /(?!^-)[0-9\,]+$/;
+						// ------------------------
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 숫자만 입력가능합니다.";
+						unmaskList.push( $this );
+						// api등록완료
+					} else if ( info.ime == "year" ) {
+						mat = /^[0-9]{4}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 1900와 같은 년도형식으로 입력해주세요.";
+						// api등록완료
+					} else if ( info.ime == "custmNb" ) {
+						mat = /^([0-9]{3})-([0-9]{2})-([0-9]{5})$/g;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 사업자번호(예:000-00-00000) 형식으로 입력해주세요.";
+						// api등록완료
+					} else if ( info.ime == "tel" ) {
+						mat = /^[0-9]{2,3}-[0-9]{3,4}-[0-9]{4}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 전화번호 형식으로 작성해 주세요.(예:02-1234-1234)";
+					} else if ( info.ime == "time" ) {
+						mat = /^([0-9]{2})\:([0-9]{2})$/g;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 시간형식(예:10:10)으로 입력해주세요.";
+					} else if ( info.ime == "date" ) {
+						mat = /^[0-9]{4}\.[0-9]{2}\.[0-9]{2}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목 형식이 잘못되엇습니다.(예:1999.09.09)";
+					} else if ( info.ime == "dateHHmm" ) {
+						mat = /^[0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}\:[0-9]{2}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목 형식이 잘못되엇습니다.(예:1999.09.09 12:01)";
+					}
+					// 2019-07-16 김형섭 추가
+					// /^\d{3}-\d{3,4}-\d{4}$/;
+					else if ( info.ime == "phon") {
+						// mat = /^01([0|1|6|7|8|9]?)-?([0-9]{3,4})-?([0-9]{4})$/; ('-' 상관없이 )
+						mat =  /^\d{3}-\d{3,4}-\d{4}$/; // ('-' 필수 )
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 휴대폰 형식으로 작성해 주세요.(예:010-1234-1234)";
+					}
+					if ( !$this.val().match( mat ) && mat ) {
+						errorMsgList.push( {
+							"node" : $this ,
+							"msg" : imeMsg
+						} );
+					}
+				}
+			} );
+		}
+		if ( errorMsgList.length ) {
+			var msg;
+			if ( global.isMobile ) {
+				msg = "";
+				$.each( errorMsgList ,function ( key ,entry ) {
+					msg += entry.msg + "\r\n";
+					if ( entry.node.is( ":radio,:checkbox" ) ) {
+						entry.node.parent().addClass( "VALIDATE_ERROR_MSG" );
+					} else {
+						entry.node.addClass( "VALIDATE_ERROR_MSG" );
+					}
+				} );
+			} else {
+				msg = "<ul class='mlt_msg'>";
+				$.each( errorMsgList ,function ( key ,entry ) {
+					msg += ( "<li><span class='required'></span> " + entry.msg + "</li>" );
+					if ( entry.node.is( ":radio,:checkbox" ) ) {
+						// 라디오 체크박스는 상위(label) 상위(li) 상위(ul)이여서 변경
+						// entry.node.parent().css( "border" ,"1px solid red" );
+						// entry.node.parent().addClass( "VALIDATE_ERROR_MSG" );
+						entry.node.parent().parent().parent().css( "border" ,"1px solid red" );
+						entry.node.parent().parent().parent().addClass( "VALIDATE_ERROR_MSG" );
+					} else {
+						entry.node.css( "border" ,"1px solid red" );
+						entry.node.addClass( "VALIDATE_ERROR_MSG" );
+					}
+				} );
+				msg += "</ul>";
+				msg = msg.replace( /(.+)\\r\\n$/gi ,"$1" );
+			}
+			$.alert( msg ,{
+				"width" : 800 ,
+				"close" : function () {
+					if ( errorMsgList[ 0 ].node.parents( ".ui-tabs" ).length ) {
+						errorMsgList[ 0 ].node.parents( ".ui-tabs" ).find( ".ui-tabs-nav li a" ).each( function ( index ) {
+							if ( $( $( this ).attr( "href" ).replace( /(.*)?\#(.+)/gi ,"#$2" ) ).find( errorMsgList[ 0 ].node ).length ) {
+								errorMsgList[ 0 ].node.parents( ".ui-tabs" ).tabs( "option" ,"active" ,index );
+								errorMsgList[ 0 ].node.focus();
+							}
+						} );
+					} else {
+						errorMsgList[ 0 ].node.focus();
+					}
+				}
+			} );
+		} else {
+			$.each( unmaskList ,function ( key ,entry ) {
+				/*
+				 * if ( entry.classData().ime == "price" ) { entry.val( entry.val().replace( /\,/gi ,"" ) ); }
+				 */
+			} );
+		}
+		return errorMsgList.length <= 0;
+	}
+} );

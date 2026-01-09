@@ -1,0 +1,1122 @@
+var global;
+( function ( $ ) {
+	$.rand = function () {
+		var chars = '0123456789abcdef'.split( '' );
+		var uuid = [] ,rnd = Math.random ,r;
+		uuid[ 8 ] = uuid[ 13 ] = uuid[ 18 ] = uuid[ 23 ] = '-';
+		uuid[ 14 ] = '4';
+		for ( var i = 0 ; i < 36 ; i++ ) {
+			if ( !uuid[ i ] ) {
+				r = 0 | rnd() * 16;
+				uuid[ i ] = chars[ ( i == 19 ) ? ( r & 0x3 ) | 0x8 : r & 0xf ];
+			}
+		}
+		return 'uuid' + uuid.join( '' ).replace( /\-/gi ,"" );
+	};
+	$.dateFormat = function ( date ,dateType ) {
+		if ( date instanceof String ) data = new Date( date );
+		if ( !date ) return date;
+		var zf = function ( obj ,len ) {
+			var string = function ( str ,len ) {
+				var s = '' ,i = 0;
+				while ( i++ < len ) {
+					s += str;
+				}
+				return s;
+			};
+			var str = obj.toString();
+			return string( "0" ,len - str.length ) + obj;
+		};
+		var weekName = [ "일요일" ,"월요일" ,"화요일" ,"수요일" ,"목요일" ,"금요일" ,"토요일" ];
+		return dateType.replace( /(yyyy|yy|MM|dd|E|hh|mm|ss|a\/p)/gi ,function ( $1 ) {
+			switch ( $1 ) {
+				case "yyyy" :
+					return date.getFullYear();
+				case "yy" :
+					return zf( date.getFullYear() % 1000 ,2 );
+				case "MM" :
+					return zf( date.getMonth() + 1 ,2 );
+				case "dd" :
+					return zf( date.getDate() ,2 );
+				case "E" :
+					return weekName[ date.getDay() ];
+				case "HH" :
+					return zf( date.getHours() ,2 );
+				case "hh" :
+					return zf( ( h = date.getHours() % 12 ) ? h : 12 ,2 );
+				case "mm" :
+					return zf( date.getMinutes() ,2 );
+				case "ss" :
+					return zf( date.getSeconds() ,2 );
+				case "a/p" :
+					return date.getHours() < 12 ? "오전" : "오후";
+				default :
+					return $1;
+			}
+		} );
+	};
+	$.submit = function ( url ,params ) {
+		url = url ? url : location.href;
+		params = params ? params : {};
+		if ( !url ) {
+			$.alert( "URL은 필수값입니다." );
+			return false;
+		}
+		var $form = $( "<form method='post' action='" + url + "'></form>" );
+		$.each( params ,function ( key ,value ) {
+			$form.append( $( "<input type='input'/>" ).attr( {
+				"name" : key ,
+				"value" : value
+			} ) );
+		} );
+		$form.appendTo( "body" ).submit().remove();
+	};
+	$.location = function ( url ,params ) {
+		url = url ? url : location.href;
+		params = params ? params : {};
+		if ( !url ) {
+			$.alert( "URL은 필수값입니다." );
+			return false;
+		}
+		var $form = $( "<form method='get' action='" + url + "'></form>" );
+		$.each( params ,function ( key ,value ) {
+			$form.append( $( "<input type='hidden'/>" ).attr( {
+				"name" : key ,
+				"value" : value
+			} ) );
+		} );
+		$form.appendTo( "body" ).submit().remove();
+	};
+	$.JSONEncode = function ( data ) {
+		try {
+			data = $.parseJSON( data.replace( /\&\#034\;/ ,'"' ).replace( /\'/gi ,'"' ) );
+		} catch ( e ) {
+			data = {
+				"result" : 0
+			};
+		}
+		return data;
+	};
+	$.clipboard = function ( str ) {
+		var ie = ( document.all ) ? true : false;
+		if ( ie ) {
+			window.clipboardData.setData( "Text" ,str );
+			$.alert( "주소가 복사되었습니다.\'Ctrl+V\'를 눌러 붙여넣기 해주세요." );
+		} else {
+			prompt( "이 글의 트랙백 주소입니다. Ctrl+C를 눌러 클립보드로 복사하세요" ,str );
+		}
+	};
+	$.JSONDecode = function ( data ) {
+		return $.toJSON( data );
+	};
+	$.alert = function ( msg ,params ) {
+		params = params ? params : {};
+		if ( global.isMobile ) {
+			alert( msg );
+			if ( params.close ) {
+				params.close();
+			}
+		} else {
+			$( "<div class='di_alert'>" ).attr( {
+				"id" : "DIALOG_ALERT"
+			} ).addClass( "dialog" ).html( msg.replace( /(\r)?\n/gi ,"</br>" ) ).layout( $.extend( {
+				"title" : "메세지" ,
+				"width" : $( window ).width() > 600 ? 500 : 300 ,
+			} ,$.extend( params ,{
+				"position": {
+					my: "center center",
+					at: "center center",
+				},
+			} ) ) );
+			$( '.ui-dialog' ).addClass( 'ui-dialog-alert-wrap' );
+			$( '.ui-dialog-buttonset button' ).addClass( 'di_btn_close' );
+		}
+	};
+	$.confirm = function ( msg ,action ,params ) {
+		if ( global.isMobile ) {
+			if ( confirm( msg ) ) {
+				action();
+			}
+			return false;
+		} else {
+			params = params ? params : {};
+			$( "<div class='di_confirm'>" ).attr( {
+				"id" : "DIALOG_CONFIRM"
+			} ).addClass( "dialog" ).html( msg.replace( /(\r)?\n/gi ,"</br>" ) ).layout( $.extend( {
+				"title" : "확인" ,
+				"width" : $( window ).width() > 600 ? 500 : 300 ,
+				"buttons" : [{
+					text : "확인" ,
+					addClass : "di_btn_conf" ,
+					click : function () {
+						action();
+						$( "#DIALOG_CONFIRM" ).dialog( 'close' );
+					}
+				} ,{
+					text : "취소" ,
+					addClass : "di_btn_close" ,
+					click : function () {
+						$( "#DIALOG_CONFIRM" ).dialog( 'close' );
+					}
+				} ]
+			} ,$.extend( params ,{
+				"position" : {
+					my: "center",
+					at: "center",
+				}
+			} ) ) );
+			$( '.ui-dialog' ).addClass( 'ui-dialog-conf-wrap' );
+		}
+	};
+	// 취소 기능 있을때
+	$.confirm2 = function ( msg ,action ,action2 ,params ) {
+		if ( global.isMobile ) {
+			if ( confirm( msg ) ) {
+				action();
+			}else{
+				action2();
+			}
+			return false;
+		} else {
+			params = params ? params : {};
+			$( "<div class='di_confirm'>" ).attr( {
+				"id" : "DIALOG_CONFIRM"
+			} ).addClass( "dialog" ).html( msg.replace( /(\r)?\n/gi ,"</br>" ) ).layout( $.extend( {
+				"title" : "확인" ,
+				"width" : $( window ).width() > 600 ? 500 : 300 ,
+				"buttons" : [ {
+					text : "취소" ,
+					addClass : "di_btn_close" ,
+					click : function () {
+						action2();
+						$( "#DIALOG_CONFIRM" ).dialog( 'close' );
+					}
+				} ,{
+					text : "확인" ,
+					addClass : "di_btn_conf" ,
+					click : function () {
+						action();
+						$( "#DIALOG_CONFIRM" ).dialog( 'close' );
+					}
+				} ]
+			} ,$.extend( params ,{
+				"position" : {
+					my: "center",
+					at: "center",
+				}
+			} ) ) );
+			$( '.ui-dialog' ).addClass( 'ui-dialog-conf-wrap' );
+		}
+	};
+	$.telFormat = function ( str ) {
+		return str.replace( /^(02.{0}|^01.{1}|[0-9]{3})(\-)?([0-9]+)(\-)?([0-9]{4})/ ,"$1-$3-$5" );
+	};
+	$.custmNbFormat = function ( str ) {
+		return str.replace( /^([0-9]{3})(\-)?([0-9]{2})(\-)?([0-9]{5})/ ,"$1-$3-$5" );
+	};
+	$.numberFormat = function ( vals ) { // 숫자형에 콤마삽입
+		var input = String( vals );
+		var reg = /(\-?\d+)(\d{3})($|\.\d+)/;
+		if ( reg.test( input ) ) {
+			return input.replace( reg ,function ( str ,p1 ,p2 ,p3 ) {
+				return $.numberFormat( p1 ) + "," + p2 + "" + p3;
+			} );
+		} else {
+			return input;
+		}
+	};
+	$.rand = function () {
+		var chars = '0123456789abcdef'.split( '' );
+		var uuid = [] ,rnd = Math.random ,r;
+		uuid[ 8 ] = uuid[ 13 ] = uuid[ 18 ] = uuid[ 23 ] = '-';
+		uuid[ 14 ] = '4';
+		for ( var i = 0 ; i < 36 ; i++ ) {
+			if ( !uuid[ i ] ) {
+				r = 0 | rnd() * 16;
+				uuid[ i ] = chars[ ( i == 19 ) ? ( r & 0x3 ) | 0x8 : r & 0xf ];
+			}
+		}
+		return 'uuid' + uuid.join( '' ).replace( /\-/gi ,"" );
+	};
+	$.byteSize = function ( str ) {
+		var tcount = 0;
+		var tmpStr = new String( str );
+		var temp = tmpStr.length;
+		var onechar;
+		for ( var k = 0 ; k < temp ; k++ ) {
+			onechar = tmpStr.charAt( k );
+			if ( escape( onechar ).length > 4 ) {
+				tcount += 2;
+			} else {
+				tcount += 1;
+			}
+		}
+		return tcount;
+	};
+	$.textHTML = function ( str ) {
+		return str.replace( /\n/gi ,"<br/>" ).replace( /\t/gi ,"&emsp;" ).replace( /\s/gi ,"&nbsp;" );
+	};
+	$.nvl = function ( object ,def ) {
+		return object ? object : def;
+	};
+	/* [YK] 에디터 내용 표출 작업 - javaUtil에 내용 치환 및 class 지정 div 처리 */
+	$.unescapeContDivHTML = function (values) {
+		if ( !values ) return '';
+		var cssTxt = "<link rel='stylesheet' type='text/css' href='"+ global.contextPath+ "/common/plugin/ckeditor/contentsViewEdit.css' media='all' />";
+		return cssTxt + "<div class='ck-contentEditDiv'>" + $.unescapeHTML(values) + "</div>";
+	};
+	$.unescapeHTML = function ( values ) {
+		if ( !values ) return '';
+		values = values.replace( /&lt;/gi ,"<" );
+		values = values.replace( /&gt;/gi ,">" );
+		values = values.replace( /&amp;/gi ,"&" );
+		values = values.replace( /&#38;/gi ,"&" );
+		values = values.replace( /&quot;/gi ,"\"" );
+		values = values.replace( /&#34;/gi ,"\"" );
+		values = values.replace( /&#39;/gi ,"'" );
+		values = values.replace( /&#36;/gi ,"\\$" );
+		values = values.replace( /<base/gi ,"<span" );
+		return values;
+	};
+	$.time = function ( append ) {
+		return append ? append + new Date().getTime().toString() : new Date().getTime().toString();
+	};
+	$.encode = function () {
+		return encodeURIComponent( str );
+	};
+	$.parseInt = function ( str ) {
+		if ( isNaN( str ) ) return 0;
+		return parseInt( str ,10 ) > 0 ? parseInt( str ,10 ) : 0;
+	};
+	$.parseFloat = function ( str ) {
+		if ( isNaN( str ) ) return 0;
+		try {
+			return parseFloat( str );
+		} catch ( e ) {
+			return 0;
+		}
+	};
+	$.upload = function ( action ) {
+		$.ajax( {
+			"url" : "/common/cmnFile/dialog/uploadForm.do" ,
+			"dataType" : "text" ,
+			"success" : function ( html ) {
+				var $html = $( html );
+				$html.layout( {
+					"title" : "파일업로드" ,
+					"width" : $( window ).width() > 800 ? 800 : 300 ,
+					"create" : function ( $this ) {
+						$( this ).find( "[name='upload']" ).change( function () {
+							$html.find( "label" ).text( $( this ).val() );
+						} );
+					} ,
+					"action" : function ( result ) {
+						$html.dialog( 'destroy' );
+						$html.find( "form" ).ajaxSubmit( {
+							contentType : "application/x-www-form-urlencoded;charset=UTF-8" ,
+							dataType : "json" ,
+							success : action
+						} );
+					}
+				} );
+			}
+		} );
+	};
+	$.cmnCdLstList = function ( cdId ,action ) {
+		$.ajax( {
+			"url" : "/common/cmnCd/findCmnCdLstList.do" ,
+			"dataType" : "json" ,
+			"data" : {
+				"cdId" : cdId
+			} ,
+			"success" : function ( result ) {
+				action( result.cmnCdLstList );
+			}
+		} );
+	};
+	$.openWindow = function ( options ) {
+		if ( options.width == undefined || options.width == "" ) {
+			options.width = 1024;
+		}
+		if ( options.height == undefined || options.height == "" ) {
+			options.height = 768;
+		}
+		if ( options.layout == undefined || options.layout == "" ) {
+			options.layout = "resizable=no, toolbar=no, menubar=no, location=no, status=no, scrollbars=yes";
+		}
+		var dualScreenLeft = window.screenLeft != undefined ? window.screenLeft : screen.left;
+		var dualScreenTop = window.screenTop != undefined ? window.screenTop : screen.top;
+		var screenWidth = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth ? document.documentElement.clientWidth : screen.width;
+		var screenHeight = window.innerHeight ? window.innerHeight : document.documentElement.clientHeight ? document.documentElement.clientHeight : screen.height;
+		var left = ( screenWidth / 2 ) - ( options.width / 2 ) + dualScreenLeft;
+		var top = ( screenHeight / 2 ) - ( options.height / 2 ) + dualScreenTop;
+		var popupWindowName = "__COMMON_WINDOW__" + Math.floor( ( Math.random() * 10000000000000000 ) + 1 );
+		alert(options.url);
+		var url = options.context != undefined ? convertContext( options.context ) + "/" + options.url : options.url;
+		if(url.indexOf("me2.do") > -1) url = options.url;
+		alert(url);
+		var elements = "";
+		if ( $.isArray( options.params ) ) {
+			$.each( options.params ,function ( index ,params ) {
+				elements += "<input type='hidden' name='" + params.name + "' value='" + params.value + "'>";
+			} );
+		} else {
+			if ( options.params != undefined && options.params != null ) {
+				$.each( options.params ,function ( name ,value ) {
+					elements += "<input type='hidden' name='" + name + "' value='" + value + "'>";
+				} );
+			}
+		}
+		var $form = $( "<form method='get' action='" + url + "' target='" + popupWindowName + "'>" + elements + "</form>" ).appendTo( "body" );
+		var w = window.open( "" ,popupWindowName ,"top=" + top + ", left=" + left + ", width=" + options.width + ", height=" + options.height + ", " + options.layout );
+		$form.submit().remove();
+		return w;
+	};
+	$.imageView = function ( src ) {
+		$( "<div>" ).append( $( "<img>" ).attr( {
+			"src" : src ,
+			"width" : "100%"
+		} ) ).layout( {
+			"title" : "Image View" ,
+			"width" : 1000 ,
+		} );
+	};
+
+	/*
+	 * [YK] REMOVE 버전 같은 값이 있는 열을 병합함 사용법 : $.rowspan("#test", 2);
+	 */
+	$.rowspanRm = function(obj, colIdx, isStats , hidChk) {
+	    return $(obj).each(function(){
+	        var that;
+	        $('tr', this).each(function(row) {
+	        	var $td = $('td:eq('+colIdx+')', this).filter(':visible');
+	    		if ( hidChk != null ){
+	    			$td = $('td:eq('+colIdx+')', this);
+	    		}
+	        	$td.each(function(col) {
+	                if ($(this).html() == $(that).html()
+	                    && (!isStats
+	                            || isStats && $(this).prev().html() == $(that).prev().html()
+	                            )
+	                    ) {
+	                    rowspan = $(that).attr("rowspan") || 1;
+	                    rowspan = Number(rowspan)+1;
+
+	                    $(that).attr("rowspan",rowspan);
+
+	                    // do your action for the colspan cell here
+	                    $(this).remove();
+
+	                    // $(this).remove();
+	                    // do your action for the old cell here
+
+	                } else {
+	                    that = this;
+	                }
+
+	                // set the that if not already set
+	                that = (that == null) ? this : that;
+	            });
+	        });
+	    });
+	}
+	/*
+	 * 같은 값이 있는 열을 병합함 사용법 : $.rowspan("#test", 2);
+	 */
+	$.rowspan = function(obj, colIdx, isStats) {
+	    return $(obj).each(function(){
+	        var that;
+	        $('tr', this).each(function(row) {
+	            $('td:eq('+colIdx+')', this).filter(':visible').each(function(col) {
+	                if ($(this).html() == $(that).html()
+	                    && (!isStats
+	                            || isStats && $(this).prev().html() == $(that).prev().html()
+	                            )
+	                    ) {
+	                    rowspan = $(that).attr("rowspan") || 1;
+	                    rowspan = Number(rowspan)+1;
+
+	                    $(that).attr("rowspan",rowspan);
+
+	                    // do your action for the colspan cell here
+	                    $(this).hide();
+
+	                    // $(this).remove();
+	                    // do your action for the old cell here
+
+	                } else {
+	                    that = this;
+	                }
+
+	                // set the that if not already set
+	                that = (that == null) ? this : that;
+	            });
+	        });
+	    });
+	}
+	/*
+	 * 같은 값이 있는 행을 병합함 사용법 : $.colspan("#test", 2);
+	 */
+	$.colspan = function(obj, rowIdx) {
+	    return $(obj).each(function(){
+
+	        var that;
+	        $('tr', this).filter(":eq("+rowIdx+")").each(function(row) {
+	            $(this).find('th').filter(':visible').each(function(col) {
+	                if ($(this).html() == $(that).html()) {
+	                    colspan = $(that).attr("colSpan") || 1;
+	                    colspan = Number(colspan)+1;
+
+	                    $(that).attr("colSpan",colspan);
+	                    $(this).hide(); // .remove();
+	                } else {
+	                    that = this;
+	                }
+
+	                // set the that if not already set
+	                that = (that == null) ? this : that;
+
+	            });
+	        });
+	    });
+	}
+	var permission;
+	function setPermission ( inquiry ,registration ,print ,sms ,download ) {
+		permission = {
+			"inquiry" : inquiry ,
+			"registration" : registration ,
+			"print" : print ,
+			"sms" : sms ,
+			"download" : download
+		};
+	}
+	var pageAttribute;
+	function setPageAttribute ( rootMenuId ,menuId ,programId ,programType ,personal ) {
+		pageAttribute = {
+			"rootMenuId" : rootMenuId ,
+			"menuId" : menuId ,
+			"programId" : programId ,
+			"programType" : programType ,
+			"personal" : personal
+		};
+	}
+	var reportFile;
+	var reportOption;
+	// $.cookie.json = true;
+	$.openReport = function ( file ,options ) {
+		console.log("openReport함수호출");
+		// 2015.06.29 IE 8.0이하에서 Report사용이 불가능 하므로 공통으로 제한한다.
+		// if ( $.browser.msie && $.browser.version < 9 ) {
+		// alert( "IE 8.0 이하버전에서는 사용이 불가능합니다.\nchrome을 설치후 사용하시기 바랍니다." );
+		// return false;
+		// }
+		setReportOption( file ,options );
+		console.log("reportOption상세 reportOption.popup체크");
+		console.log(reportOption);
+		if ( reportOption.popup ) {
+			delete reportOption[ "iframe" ];
+
+			console.log("reportOption상세 reportOption쿠키생성");
+			$.cookie( "reportOption" ,JSON.stringify(reportOption), { path : '/' });
+			console.log("reportOption상세 reportOption쿠키값 확인");
+			console.log($.cookie( "reportOption"));
+			var reportWindow = $.openWindow( {
+				url : "/common/syst/util/popup/report.do"
+			} );
+			// 팝업이 차단되었는지 return값을 이용하여 판별후, 차단되었을 경우 alert
+			if ( reportWindow == null ) {
+				alert( "차단된 팝업창을 허용해 주십시오.\n" + "차단된 팝업창의 허용은 메뉴의 [도구->팝업창 허용] 에서 설정하시기 바랍니다.\n" + "툴바가 설치되어 있는경우 툴바를 삭제 하거나 팝업차단기능 해제해 주시기 바랍니다." );
+			}
+			 return;
+		}
+
+		if ( reportOption.iframe != undefined ) {
+			$.exportReport();
+		}
+	};
+	$.exportReport = function ( isDownload ,file ,options ) {
+		console.log("exportReport함수호출");
+		setReportOption( file ,options );
+		console.log("reportOption상세 reportOption체크???");
+		console.log(reportOption);
+		if ( reportOption == null ) {
+			alert( "생성된 레포트가 없습니다. 먼저 레포트를 출력하십시오." );
+			return;
+		}
+		var $form = $( "<form>" ,{
+			method : "post"
+		} );
+		$form.append( $( "<input>" ,{
+			type : "hidden" ,
+			name : "file" ,
+			value : reportOption.file
+		} ) );
+		$form.append( $( "<input>" ,{
+			type : "hidden" ,
+			name : "exportType" ,
+			value : reportOption.exportType
+		} ) );
+		$form.append( $( "<input>" ,{
+			type : "hidden" ,
+			name : "excelExportSheetOption" ,
+			value : reportOption.excelExportSheetOption
+		} ) );
+		console.log("reportOption상세 reportOption.params체크");
+		console.log(reportOption.params);
+		if ( reportOption.params != undefined ) {
+			console.log("reportOption상세 reportOption.params 포문");
+			console.log(reportOption.params);
+			$.each( reportOption.params ,function ( key ,value ) {
+				$form.append( $( "<input>" ,{
+					type : "hidden" ,
+					name : "names" ,
+					value : key
+				} ) );
+				$form.append( $( "<input>" ,{
+					type : "hidden" ,
+					name : "values" ,
+					value : value
+				} ) );
+			} );
+		}
+		console.log("$form상세");
+		console.log($form);
+		if ( isDownload ) {
+			if ( !$( "iframe[name=download]" ).length ) {
+				$( "<iframe>" ,{
+					name : "download" ,
+					style : "display: none"
+				} ).appendTo( "body" );
+			}
+		}
+		/* 업무 구분을 받을수 있도록 수정 */
+
+		var conPath = "";
+		if ( reportOption.contextPath != undefined ) {
+			conPath = convertContext( reportOption.contextPath ) + "/";
+		}
+		$form.attr( "target" ,isDownload ? "download" : ( reportOption.iframe == undefined ) ? "viewer" : reportOption.iframe.name );
+		console.log("$form상세");
+		console.log($form);
+		$form.attr( "action" ,isDownload ? "/common/syst/util/report/download.do" : "/common/syst/util/report/viewer.do" ).appendTo( "body" ).submit().remove();
+		// $form.attr("target", isDownload ? "download": (reportOption.iframe == undefined) ? "viewer" : reportOption.iframe.name);
+		// $form.attr("action", isDownload ? "comm/syst/util/report/download.do" : "comm/syst/util/report/viewer.do").appendTo("body").submit().remove();
+	}
+	function setReportOption ( file ,options ) {
+		console.log("setReportOption함수호출");
+		if ( options == undefined ) {
+			options = {};
+		}
+		console.log("options상세");
+		console.log(options);
+		if ( options.iframe == undefined ) {
+			options.popup = true;
+		}
+		console.log("options상세 options.iframe체크");
+		console.log(options);
+		// option에 reb파일명과 permission,pageAttribute를 추가한다.
+		if ( !options.hasOwnProperty( "file" ) ) {
+			options.file = file;
+		}
+		console.log("options상세 options.hasOwnProperty체크");
+		console.log(options.hasOwnProperty( "file" ));
+		console.log(options);
+		if ( !options.hasOwnProperty( "permission" ) ) {
+			// options.permission = permission;
+		}
+		if ( !options.hasOwnProperty( "pageAttribute" ) ) {
+			// options.pageAttribute = pageAttribute;
+		}
+		reportOption = options;
+		console.log("setReportOption함수종료");
+	}
+} )( jQuery );
+/**
+ * $("div:regex(class|input,regex")
+ */
+jQuery.expr[ ':' ].regex = function ( elem ,index ,match ) {
+	var matchParams = match[ 3 ].split( ',' ) ,validLabels = /^(data|css):/ ,attr = {
+		method : matchParams[ 0 ].match( validLabels ) ? matchParams[ 0 ].split( ':' )[ 0 ] : 'attr' ,
+		property : matchParams.shift().replace( validLabels ,'' )
+	} ,regexFlags = 'ig' ,regex = new RegExp( matchParams.join( '' ).replace( /^\s+|\s+$/g ,'' ) ,regexFlags );
+	return regex.test( jQuery( elem )[ attr.method ]( attr.property ) );
+};
+jQuery.fn.extend( {
+	"editor" : function ( params ) {
+		if ( !params ) params = {};
+		if ( CKEDITOR.env.ie && CKEDITOR.env.version < 9 ) CKEDITOR.tools.enableHtml5Elements( document );
+		CKEDITOR.config.height = params.height ? params.height : $( this ).height();
+		CKEDITOR.config.width = params.width ? params.width : 'auto';
+		CKEDITOR.config.uiColor = params.uiColor ? params.uiColor : '#DDDDDD';
+		CKEDITOR.config.disableObjectResizing = params.disableObjectResizing ? params.disableObjectResizing : true;
+		var id = $( this ).attr( "id" );
+		if ( !id ) {
+			alert( "ID속성이 등록되지 않았습니다." );
+			return;
+		}
+		var wysiwygareaAvailable = isWysiwygareaAvailable() ,isBBCodeBuiltIn = !!CKEDITOR.plugins.get( 'bbcode' );
+		var editorElement = CKEDITOR.document.getById( id );
+		if ( isBBCodeBuiltIn ) {
+			editorElement.setHtml( 'Hello world!\n\n' + 'I\'m an instance of [url=http://ckeditor.com]CKEditor[/url].' );
+		}
+		if ( wysiwygareaAvailable ) {
+			CKEDITOR.replace( id );
+		} else {
+			editorElement.setAttribute( 'contenteditable' ,'true' );
+			CKEDITOR.inline( id );
+		}
+		function isWysiwygareaAvailable () {
+			if ( CKEDITOR.revision == ( '%RE' + 'V%' ) ) { return true; }
+			return !!CKEDITOR.plugins.get( 'wysiwygarea' );
+		}
+	} ,
+	"submitAjax" : function ( params ) {
+		params = $.extend( params ,{
+			"beforeSend" : function ( xhr ) {
+				xhr.setRequestHeader( "ajax" ,"true" );
+				if ( this.dataType != "script" ) {
+					showLoding();
+				}
+			} ,
+			"error" : function () {
+				removeLoding();
+				$.alert( "서버 요청을 실패하였습니다." );
+			} ,
+			"complete" : function () {
+				removeLoding();
+			} ,
+			timeout : 1 * 60 * 60 * 1000 ,// 2 hours ,
+		} );
+		var $this = $( this );
+		showLoding();
+		$this.ajaxSubmit( params );
+	} ,
+	"params" : function () {
+		var params = {};
+		$.each( $( this ).find( ":input" ).serializeArray() ,function ( index ,object ) {
+			if ( params[ object.name ] ) {
+				if ( params[ object.name ] instanceof Array ) {
+					params[ object.name ].push( object.value );
+				} else {
+					var arr = new Array();
+					arr.push( params[ object.name ] );
+					arr.push( object.value );
+					params[ object.name ] = arr;
+				}
+			} else {
+				params[ object.name ] = object.value;
+			}
+		} );
+		return params;
+	} ,
+	"layout" : function ( params ) {
+		var $this = $( this );
+		var buttons = [];
+		params = params ? params : {};
+		if ( !$( this ).attr( "id" ) ) {
+			$( this ).attr( "id" ,"DIALOG_LAYOUT_" + new Date().getTime().toString() );
+		} else if ( $this.is( ".dialog" ) ) {
+			$( "#" + $( this ).attr( "id" ) ).remove();
+		}
+		if ( params.buttons == null ) {
+			buttons.push( {
+				text : "닫기" ,
+				addClass : "di_btn_close" ,
+				click : function () {
+					$this.dialog( 'close' );
+				}
+			} );
+			if ( params.action ) {
+				buttons.push( {
+					text : "확인" ,
+					addClass : "di_btn_conf" ,
+					click : function () {
+						if ( params.action( $this ) ) {
+							$( this ).dialog( 'close' );
+						}
+					}
+				} );
+			}
+		} else {
+			buttons = params.buttons;
+		}
+		/** a태그가 자동 포커스가 되지 않도록 수정한다. */
+		params = $.extend( {
+			"autoOpen" : true ,
+			"modal" : true ,
+			"title" : "팝업" ,
+			"close" : function ( event ,ui ) {
+				if ( $this.is( ".dialog" ) ) {
+					$this.dialog( 'destroy' ).remove();
+				} else {
+					$this.dialog( 'close' );
+				}
+				$( 'html' ).removeClass( 'popOn' );
+			} ,
+			"open" : function () {
+				$( 'html' ).addClass( 'popOn' );
+				if ( $this.is( ".dialog" ) ) {
+					$this.customTags();
+				}
+			} ,
+			"create" : function () {} ,
+			"dialogClass" : "syworksDialog" ,
+			/* "position" : "top" , */
+			"draggable" : true ,
+			"resizable" : false ,
+			"appendTo" : "#contents" ,
+			"buttons" : buttons
+		} ,params );
+		if ( $this.is( ".dialog" ) ) {
+			$( this ).appendTo( "body" ).dialog( params );
+		} else {
+			$( this ).dialog( params );
+		}
+		return $( this );
+	} ,
+	"bindParams" : function ( params ) {
+		var temp ,name;
+		if ( !params ) params = {};
+		this.template = $( this ).prop( 'outerHTML' );
+		do {
+			temp = this.template.match( /\{([0-9a-zA-Z\_]+)\}/ );
+			if ( temp ) {
+				name = temp[ 0 ].replace( /(\{|\})/g ,'' );
+				this.template = this.template.replace( new RegExp( "\\{" + name + "\\}" ,"g" ) ,params[ name ] != null ? params[ name ] : "" );
+			}
+		} while ( temp );
+		return $( this ).html( $( this.template ).html() );
+	} ,
+	"setParams" : function ( params ) {
+		var $this = $( this );
+		$this.find( "input[type='hidden'],input[type='text'],textarea" ).val( "" );
+		$this.find( "select" ).find( "option:first" ).prop( "selected" ,true ).attr( "selected" ,true );
+		$this.find( "input[type='checkbox'],input[type='radio']" ).prop( "checked" ,false ).attr( "checked" ,false );
+		$.each( params ,function ( key ,val ) {
+			var $target = $this.find( "[name='" + key + "']" );
+			if ( $target.is( ":radio" ) ) {
+				$target.filter( "[value='" + val + "']" ).prop( "checked" ,true ).attr( "checked" ,true ).click();
+			} else if ( $target.is( ":checkbox" ) ) {
+				$target.prop( "checked" ,false ).trigger( "checkbox:update" );
+				if ( val instanceof Array ) {
+					$.each( val ,function ( valKey ,valVal ) {
+						$target.filter( "[value='" + valVal + "']" ).prop( "checked" ,true ).attr( "checked" ,true ).trigger( "checkbox:update" );
+					} );
+				} else {
+					$target.filter( "[value='" + val + "']" ).prop( "checked" ,true ).attr( "checked" ,true ).trigger( "checkbox:update" );
+				}
+			} else if ( $target.is( "select" ) ) {
+				$target.val( val ).data( "value" ,val ? val : "" );
+			} else {
+				$target.val( val );
+			}
+		} );
+		return $( this );
+	} ,
+	"addRow" : function ( template ,params ) {
+		var temp ,name;
+		if ( !params ) params = {};
+		this.template = $( template ).prop( 'outerHTML' );
+		do {
+			temp = this.template.match( /\{([0-9a-zA-Z]+)\}/ );
+			if ( temp ) {
+				name = temp[ 0 ].replace( /(\{|\})/g ,'' );
+				this.template = this.template.replace( new RegExp( "\\{" + name + "\\}" ,"g" ) ,params[ name ] != null ? params[ name ] : "" );
+			}
+		} while ( temp );
+		var $object = $( this.template );
+		$object.appendTo( this );
+		return $object;
+	} ,
+	"classData" : function () {
+		if ( !$( this ).attr( "class" ) ) return {};
+		return $.JSONEncode( $( this ).attr( "class" ).replace( /(.+)?(\{.+\})(.+)?/ ,"$2" ) );
+	} ,
+	"validate" : function () {
+		var lang = $( this ).attr( "lang" );
+		var errorMsgList = new Array();
+		var unmaskList = new Array();
+		$( this ).find( ".VALIDATE_ERROR_MSG" ).removeClass( "VALIDATE_ERROR_MSG" );
+		var dpCheck = function ( object ) {
+			for ( var i = 0 ; i < errorMsgList.length ; i++ ) {
+				if ( $( object ).is( "[type='radio']" ) ) {
+					if ( errorMsgList[ i ].node.attr( "name" ) == $( object ).attr( "name" ) ) { return false; }
+				} else if ( $( object ).is( "[type='checkbox']" ) && errorMsgList[ i ].node.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) == $( object ).attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) ) { return false; }
+			}
+			return true;
+		};
+		if ( $( this ).find( "[class*=\\{][class*=\\}]" ).length ) {
+			$( this ).find( "[class*=\\{][class*=\\}]" ).each( function () {
+				var $this = $( this );
+				if ( ( !$this.is( ":visible" ) || $this.is( ":hidden" ) ) && !$this.parents( ".ui-tabs" ).length ) {
+					if ( $this.parent( "label" ) && !$this.is( "[type='radio']" ) && !$this.is( "[type='checkbox']" ) ) { return true; }
+				};
+				if ( $this.is( "select" ) && !$this.find( "option" ).not( "[value='']" ).length ) return;
+				if ( $this.is( ":button" ) ) return;
+				if ( $this.get( 0 ).disabled ) return true;
+				if ( !dpCheck( $this ) ) return;
+				var info = $this.classData();
+				$this = info.target ? $( info.target ) : $this;
+				if ( info.required ) {
+					if ( $this.get( 0 ).type.match( /radio|checkbox/ ) ) {
+						var chkLen = 0;
+						if ( $this.attr( "name" ).match( /\[[0-9]+\]/ ) && !$this.is( "[type='radio']" ) ) {
+							chkLen = $( $this.get( 0 ).form ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + "):enabled:checked" ).length;
+						} else {
+							chkLen = $( $this.get( 0 ).form ).find( "input[name=\"" + $this.attr( "name" ) + "\"]:enabled:checked" ).length;
+						}
+						if ( info.minlength && $this.get( 0 ).type.match( /checkbox/ ) && chkLen < info.minlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.minlength + "개 이상 선택해주세요."
+							} );
+						} else if ( info.maxlength && $this.get( 0 ).type.match( /checkbox/ ) && chkLen > info.maxlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.maxlength + "개 이내로 선택해주세요."
+							} );
+						} else if ( chkLen <= 0 ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : info.msg ? info.msg : "[" + $this.attr( "title" ) + "]항목을 선택해주세요."
+							} );
+						}
+					} else {
+						if ( info.minlength && $this.val().length < info.minlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : $this.is( "select" ) || $this.is( "[type='file']" ) ? "[" + $this.attr( "title" ) + "]항목을 " + info.minlength + "개 이상 선택해주세요." : "[" + $this.attr( "title" ) + "]항목을 " + info.minlength + "자 이상 입력해주세요."
+							} );
+						} else if ( $.nvl( info.ime ,'' ).match( "num|float" ) && $.parseInt( $this.val() ) < info.minvalues ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : "[" + $this.attr( "title" ) + "]항목을 " + info.minvalues + "이상 입력해주세요."
+							} );
+						} else if ( info.maxlength && $this.val().length > info.maxlength ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : $this.is( "select" ) || $this.is( "[type='file']" ) ? "[" + $this.attr( "title" ) + "]항목을 " + info.maxlength + "개 이내로 선택해주세요." : "[" + $this.attr( "title" ) + "]항목을 " + info.maxlength + "자 이내로 입력해주세요."
+							} );
+						} else if ( info.required && !$this.val() ) {
+							errorMsgList.push( {
+								"node" : $this ,
+								"msg" : info.msg ? info.msg : $this.is( "select" ) || $this.is( "[type='file']" ) ? "[" + $this.attr( "title" ) + "]항목을 선택해주세요." : "[" + $this.attr( "title" ) + "]항목을 입력해주세요."
+							} );
+						}
+					}
+					if ( info.sumPerc ) {
+						if ( $this.is( "[type='text']" ) ) {
+							var sum = 0;
+							$( $this.get( 0 ).form ).find( "input:regex(name," + $this.attr( "name" ).replace( /\[[0-9]+\]\./ ,".*" ) + ")" ).each( function () {
+								sum += $.parseInt( $( this ).val() );
+							} );
+							if ( info.sumPerc != sum ) {
+								errorMsgList.push( {
+									"node" : $this ,
+									"msg" : "[" + $this.attr( "title" ) + "]항목의 총 합계를 " + info.sumPerc + "%로 설정해주세요."
+								} );
+							}
+						}
+					}
+				}
+				/**
+				 * 대상비교
+				 */
+				if ( info.eq ) {
+					if ( $this.val() != $( info.eq ).val() ) {
+						errorMsgList.push( {
+							"node" : $this ,
+							"msg" : "[" + $( info.eq ).attr( "title" ) + "],[" + $this.attr( "title" ) + "] 값이\n서로 일치하지 않습니다."
+						} );
+					}
+				}
+				/**
+				 * 입력 형식비교
+				 */
+				if ( info.ime && $this.val() ) {
+					var mat = null;
+					var imeMsg = null;
+					if ( info.ime == "kor2eng" ) {
+						mat = /[\uAC00-\uD7A3a-zA-Z]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글/영문만 입력이 가능합니다.";
+					} else if ( info.ime == "kor2engn2um" ) {
+						mat = /[\uAC00-\uD7A3a-zA-Z0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글/영문/숫자만 입력가능합니다.";
+					} else if ( info.ime == "eng2num" ) {
+						mat = /^[a-zA-Z0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문/숫자만 입력가능합니다.";
+					} else if ( info.ime == "eng" ) {
+						mat = /^[a-zA-Z]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문만 입력가능합니다.";
+					} else if ( info.ime == "kor" ) {
+						mat = /^[\uAC00-\uD7A3]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글만 입력가능합니다.";
+					} else if ( info.ime == "kor2num" ) {
+						mat = /[\uAC00-\uD7A30-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 한글/숫자만 입력가능합니다.";
+					} else if ( info.ime == "float" ) {
+						mat = /^[0-9.]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 숫자만 입력가능합니다.";
+					} else if ( info.ime == "price" ) {
+						mat = /^[0-9\,]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 숫자만 입력가능합니다.";
+						unmaskList.push( $this );
+					} else if ( info.ime == "num" ) {
+						mat = /^[0-9]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 숫자만 입력가능합니다.";
+					} else if ( info.ime == "custmNb" && lang != "en" ) {
+						mat = /^([0-9]{3})-([0-9]{2})-([0-9]{5})$/g;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 사업자번호(예:000-00-00000) 형식으로 입력해주세요.";
+					} else if ( info.ime == "year" ) {
+						mat = /^[0-9]{4}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 1900와 같은년도 형식으로 입력해주세요..";
+					} else if ( info.ime == "commCode" ) {
+						mat = /^[a-zA-Z0-9\_\-]+$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문/숫자와 특수문자(_)만 입력가능합니다.";
+					} else if ( info.ime == "time" ) {
+						mat = /^([0-9]{2})\:([0-9]{2})$/g;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 시간형식(예:10:10)으로 입력해주세요.";
+					} else if ( info.ime == "date(4)" ) {
+						mat = /^([0-9]{4})$/g;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 날자형식(예:2012)으로 입력해주세요.";
+					} else if ( info.ime == "date(8)" ) {
+						mat = /^([0-9]{4})([0-9]{2})([0-9]{2})$/g;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 날자형식(예:20121010)으로 입력해주세요.";
+					} else if ( info.ime == "domain2" ) {
+						mat = /^[^((http(s?))\:\/\/)]([0-9a-zA-Z\-]+\.)+[a-zA-Z]{2,6}(\:[0-9]+)?(\/\S*)?$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 도메인 형식으로 작성해 주세요. http:// 또는 https:// 을 빼고 입력해 주세요.";
+					} else if ( info.ime == "domain3" ) {
+						mat = /^((http(s?))\:\/\/)([0-9a-zA-Z\-]+\.)+[a-zA-Z]{2,6}(\:[0-9]+)?(\/\S*)?$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 도메인 형식으로 작성해 주세요. http:// 또는 https:// 를 포함한 도메인 주소를 입력해 주세요.";
+					} else if ( info.ime == "domain4" ) {
+						mat = /^([0-9a-zA-Z\-]+\.)+[a-zA-Z]{2,6}(\:[0-9]+)?(\/\S*)?$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 도메인 형식으로 작성해 주세요. http:// 또는 https:// 를 포함한 도메인 주소를 입력해 주세요.";
+					} else if ( info.ime == "domain" ) {
+						mat = /^(((http(s?))\:\/\/)?)([0-9a-zA-Z\-]+\.)+[a-zA-Z]{2,6}(\:[0-9]+)?(\/\S*)?$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 홈페이지 주소 형식으로 작성해 주세요. http:// 또는 https:// 를 포함한 도메인 주소를 입력해 주세요.";
+					} else if ( info.ime == "tel" && lang != "en" ) {
+						mat = /^[0-9]{2,3}-[0-9]{3,4}-[0-9]{4}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 전화번호 형식으로 작성해 주세요.(예:02-1234-1234)";
+					} else if ( info.ime == "email" ) {
+						mat = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-zA-Z]{2,6}(?:\.[a-zA-Z]{2})?)$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 이메일 형식으로 입력해주세요.";
+					} else if ( info.ime == "emailend" ) {
+						mat = /^((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-zA-Z]{2,6}(?:\.[a-zA-Z]{2})?)$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 이메일 형식으로 입력해주세요.";
+					} else if ( info.ime == "json" ) {
+						mat = /^\{\"(.+)\"\:(.+)\}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목에 데이터 형식이 잘못되었습니다.";
+					} else if ( info.ime == "date" ) {
+						mat = /^[0-9]{4}\.[0-9]{2}\.[0-9]{2}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목 형식이 잘못되었습니다.(예:1999.09.09)";
+					} else if ( info.ime == "dateHHmm" ) {
+						mat = /^[0-9]{4}\.[0-9]{2}\.[0-9]{2} [0-9]{2}\:[0-9]{2}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목 형식이 잘못되었습니다.(예:1999.09.09)";
+					} else if ( info.ime == "password" ) {
+						mat = /^([a-zA-Z0-9]){6,16}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문,숫자를 혼합하여 6~16자 이내로 입력해주세요.";
+					} else if ( info.ime == "userid" ) {
+						mat = /^[a-z0-9\_]{4,12}$/;
+						imeMsg = "[" + $this.attr( "title" ) + "]항목은 영문소문자, 숫자, 특수기호(_)를 사용하여 4~12자 이내로 입력해주세요.";
+					}
+					if ( !$this.val().match( mat ) && mat ) {
+						errorMsgList.push( {
+							"node" : $this ,
+							"msg" : imeMsg
+						} );
+					}
+				}
+			} );
+		}
+		if ( errorMsgList.length ) {
+			var msg;
+			if ( global.isMobile ) {
+				msg = "";
+				$.each( errorMsgList ,function ( key ,entry ) {
+					msg += entry.msg + "\r\n";
+					if ( entry.node.is( ":radio,:checkbox" ) ) {
+						entry.node.parent().addClass( "VALIDATE_ERROR_MSG" );
+					} else {
+						entry.node.addClass( "VALIDATE_ERROR_MSG" );
+					}
+				} );
+			} else {
+				msg = "<ul class='mlt_msg'>";
+				$.each( errorMsgList ,function ( key ,entry ) {
+					msg += ( "<li><span class='required'></span> " + entry.msg + "</li>" );
+					if ( entry.node.is( ":radio,:checkbox" ) ) {
+						entry.node.parent().addClass( "VALIDATE_ERROR_MSG" );
+					} else {
+						entry.node.addClass( "VALIDATE_ERROR_MSG" );
+					}
+				} );
+				msg += "</ul>";
+				msg = msg.replace( /(.+)\\r\\n$/gi ,"$1" );
+			}
+			$.alert( msg ,{
+				"width" : 800 ,
+				"close" : function () {
+					if ( errorMsgList[ 0 ].node.parents( ".ui-tabs" ).length ) {
+						errorMsgList[ 0 ].node.parents( ".ui-tabs" ).find( ".ui-tabs-nav li a" ).each( function ( index ) {
+							if ( $( $( this ).attr( "href" ).replace( /(.*)?\#(.+)/gi ,"#$2" ) ).find( errorMsgList[ 0 ].node ).length ) {
+								errorMsgList[ 0 ].node.parents( ".ui-tabs" ).tabs( "option" ,"active" ,index );
+								errorMsgList[ 0 ].node.focus();
+							}
+						} );
+					} else {
+						errorMsgList[ 0 ].node.focus();
+					}
+				}
+			} );
+		} else {
+			$.each( unmaskList ,function ( key ,entry ) {
+				if ( entry.classData().ime == "price" ) {
+					entry.val( entry.val().replace( /\,/gi ,"" ) );
+				}
+			} );
+		}
+		return errorMsgList.length <= 0;
+	}
+} );
+( function () {
+	$( document ).ready( function () {
+		if ( global == null ) global = {};
+		global = $.extend( global ,{
+			page : function ( currentPageNo ) {
+				var $form = $( "[name='paginationInfo.currentPageNo']" ).closest( "form" );
+				$form.attr("action",global.mappingUrl);
+				$form.find( "[name='paginationInfo.currentPageNo']" ).val( currentPageNo );
+				$form.submit();
+				return false;
+			} ,
+			morePage : function ( currentPageNo ) {
+				var $this = $( event.target );
+				var $form = $( "[name='paginationInfo.currentPageNo']" ).closest( "form" );
+				var $target = $( $this.data( "target" ) );
+				var lastNo = $this.data( "last-no" );
+				currentPageNo = currentPageNo + 1;
+				if ( lastNo <= currentPageNo ) {
+					$this.hide();
+				}
+				$.ajax( {
+					"url" : $form.attr( "action" ) ,
+					"dataType" : "text" ,
+					"data" : {
+						"paginationInfo.currentPageNo" : currentPageNo
+					} ,
+					"success" : function ( result ) {
+						if ( $target.is( "table" ) ) {
+							$target.find( "tbody" ).append( $( result ).find( "#" + $target.attr( "id" ) ).find( "tbody" ).html() );
+						}else if($target.is( "ul" )){
+							// $target.find( "ul" ).append($( result ).find( "#" + $target.attr( "id" ) ).find( "tbody" ).html());
+						}
+					}
+				} );
+				return false;
+			}
+		} );
+		/*
+		 * if ( global.resultMsg ) { $.alert( global.resultMsg ); }
+		 */
+	} );
+} )();
