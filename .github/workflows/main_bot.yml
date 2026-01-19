@@ -1,73 +1,73 @@
 name: CNU General Bots
 
-on:
-  # push: #잦은 action 방지(차단 원인1)
-  schedule:
-    #  09, 12, 15, 18, 21시 실행
-    - cron: '15 0,3,6,9,12 * * *'
-  workflow_dispatch:      # 수동 실행 버튼
+# on:
+#   # push: #잦은 action 방지(차단 원인1)
+#   schedule:
+#     #  09, 12, 15, 18, 21시 실행
+#     - cron: '15 0,3,6,9,12 * * *'
+#   workflow_dispatch:      # 수동 실행 버튼
   
-permissions:
-  contents: write
+# permissions:
+#   contents: write
   
-jobs:
-  run-bot:
-    runs-on: ubuntu-latest
+# jobs:
+#   run-bot:
+#     runs-on: ubuntu-latest
     
-    # 시간대 설정
-    env:
-      TZ: 'Asia/Seoul'
+#     # 시간대 설정
+#     env:
+#       TZ: 'Asia/Seoul'
 
-    steps:
-      - name: 저장소 코드 불러오기
-        uses: actions/checkout@v3
+#     steps:
+#       - name: 저장소 코드 불러오기
+#         uses: actions/checkout@v3
 
-      - name: 파이썬 설정하기
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
+#       - name: 파이썬 설정하기
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: '3.9'
 
-      - name: 라이브러리 설치하기
-        run: |
-          pip install -r requirements.txt
+#       - name: 라이브러리 설치하기
+#         run: |
+#           pip install -r requirements.txt
 
-      - name: 봇 3개 실행하기
-        env:
-          # 1. 관리자용 에러 알림
-          MONITOR_WEBHOOK_URL: ${{ secrets.MONITOR_WEBHOOK_URL }}
+#       - name: 봇 3개 실행하기
+#         env:
+#           # 1. 관리자용 에러 알림
+#           MONITOR_WEBHOOK_URL: ${{ secrets.MONITOR_WEBHOOK_URL }}
           
-          # 2. 학과 공지용 (cnu_bot.py)
-          cse_WEBHOOK_URL: ${{ secrets.cse_WEBHOOK_URL }}
+#           # 2. 학과 공지용 (cnu_bot.py)
+#           cse_WEBHOOK_URL: ${{ secrets.cse_WEBHOOK_URL }}
           
-          # 3. 도서관 공지용 (library_bot.py)
-          library_WEBHOOK_URL: ${{ secrets.library_WEBHOOK_URL }}
+#           # 3. 도서관 공지용 (library_bot.py)
+#           library_WEBHOOK_URL: ${{ secrets.library_WEBHOOK_URL }}
           
-          # 4. 기숙사 공지용 (dorm_bot.py)
-          dorm_WEBHOOK_URL: ${{ secrets.dorm_WEBHOOK_URL }}
+#           # 4. 기숙사 공지용 (dorm_bot.py)
+#           dorm_WEBHOOK_URL: ${{ secrets.dorm_WEBHOOK_URL }}
           
-        run: |
-          echo "📚 도서관 공지 확인 중..."
-          python src/library_bot.py
+#         run: |
+#           echo "📚 도서관 공지 확인 중..."
+#           python src/library_bot.py
           
-          echo "🛌 기숙사 공지 확인 중..."
-          python src/dorm_bot.py
+#           echo "🛌 기숙사 공지 확인 중..."
+#           python src/dorm_bot.py
 
-          echo "🏫 학과 공지 확인 중..."
-          python src/cse_bot.py
+#           echo "🏫 학과 공지 확인 중..."
+#           python src/cse_bot.py
 
-      - name: 데이터 변경사항 저장하기 (data 폴더 내 JSON)
-        run: |
-          git config --global user.name "GitHub Action Bot"
-          git config --global user.email "actions@github.com"
+#       - name: 데이터 변경사항 저장하기 (data 폴더 내 JSON)
+#         run: |
+#           git config --global user.name "GitHub Action Bot"
+#           git config --global user.email "actions@github.com"
           
-          # data 폴더 안의 모든 json 파일 담기
-          git add -f data/*.json || true
+#           # data 폴더 안의 모든 json 파일 담기
+#           git add -f data/*.json || true
           
-          if git diff --staged --quiet; then
-            echo "변경된 내용이 없습니다."
-          else
-            echo "새로운 글을 발견하여 기록 업데이트"
-            git commit -m "Bot: General 봇 데이터 갱신"
-            git pull --rebase origin main
-            git push
-          fi
+#           if git diff --staged --quiet; then
+#             echo "변경된 내용이 없습니다."
+#           else
+#             echo "새로운 글을 발견하여 기록 업데이트"
+#             git commit -m "Bot: General 봇 데이터 갱신"
+#             git pull --rebase origin main
+#             git push
+#           fi
