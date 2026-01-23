@@ -1,66 +1,66 @@
 name: CNU WITH Bot (Selenium)
 
-# on:
-#   # push:
+ on:
+   # push:
 #   schedule:
 #     # 09, 12, 15, 18, 21시 실행
-#     - cron: '15 0,3,6,9,12 * * *'
-#   workflow_dispatch: # 수동 실행 버튼
+     - cron: '15 0,3,6,9,12 * * *'
+   workflow_dispatch: # 수동 실행 버튼
 
-# permissions:
-#   contents: write # 봇이 json 파일을 수정
+ permissions:
+   contents: write # 봇이 json 파일을 수정
 
-# jobs:
-#   run-with-bot:
-#     runs-on: ubuntu-latest
+ jobs:
+   run-with-bot:
+     runs-on: ubuntu-latest
     
-#     # 시간대 설정
-#     env:
-#       TZ: 'Asia/Seoul'
+     # 시간대 설정
+     env:
+       TZ: 'Asia/Seoul'
 
-#     steps:
-#       - name: 저장소 코드 가져오기
-#         uses: actions/checkout@v4
+     steps:
+       - name: 저장소 코드 가져오기
+         uses: actions/checkout@v4
 
-#       - name: 파이썬 설정하기
-#         uses: actions/setup-python@v4
-#         with:
-#           python-version: '3.9'
+       - name: 파이썬 설정하기
+         uses: actions/setup-python@v4
+         with:
+           python-version: '3.9'
 
-#       - name: 크롬 브라우저 설치
-#         uses: browser-actions/setup-chrome@latest
+       - name: 크롬 브라우저 설치
+         uses: browser-actions/setup-chrome@latest
 
-#       - name: 라이브러리 설치하기
-#         run: |
-#           pip install requests beautifulsoup4 selenium webdriver-manager python-dotenv
+       - name: 라이브러리 설치하기
+         run: |
+           pip install requests beautifulsoup4 selenium webdriver-manager python-dotenv
 
-#       - name: WITH 봇 실행하기
-#         env:
-#           CNU_ID: ${{ secrets.CNU_ID }}
-#           CNU_PW: ${{ secrets.CNU_PW }}
+       - name: WITH 봇 실행하기
+         env:
+           CNU_ID: ${{ secrets.CNU_ID }}
+           CNU_PW: ${{ secrets.CNU_PW }}
           
-#           # 학생 공지용 웹후크
-#           with_WEBHOOK_URL: ${{ secrets.with_WEBHOOK_URL }}
+           # 학생 공지용 웹후크
+           with_WEBHOOK_URL: ${{ secrets.with_WEBHOOK_URL }}
           
-#           # 관리자 에러 알림용 웹후크
-#           MONITOR_WEBHOOK_URL: ${{ secrets.MONITOR_WEBHOOK_URL }}
-#         run: |
-#           python src/with_bot.py
+           # 관리자 에러 알림용 웹후크
+           MONITOR_WEBHOOK_URL: ${{ secrets.MONITOR_WEBHOOK_URL }}
+         run: |
+           python src/with_bot.py
 
-#       - name: 마지막 읽은 글 저장하기 (Auto Commit)
-#         run: |
-#           git config --global user.name "GitHub Action Bot"
-#           git config --global user.email "actions@github.com"
+       - name: 마지막 읽은 글 저장하기 (Auto Commit)
+         run: |
+           git config --global user.name "GitHub Action Bot"
+           git config --global user.email "actions@github.com"
           
-#           # data 폴더 안의 with 데이터 파일 담기
-#           git add -f data/with_data.json || true
+           # data 폴더 안의 with 데이터 파일 담기
+           git add -f data/with_data.json || true
           
-#           # 2. 변경사항 확인 및 저장
-#           if git diff --staged --quiet; then
-#             echo "변경된 내용이 없습니다."
-#           else
-#             echo "새로운 글을 발견하여 기록을 업데이트합니다."
-#             git commit -m "Bot: WITH 봇 데이터 갱신"
-#             git pull --rebase origin main
+           # 2. 변경사항 확인 및 저장
+           if git diff --staged --quiet; then
+             echo "변경된 내용이 없습니다."
+           else
+             echo "새로운 글을 발견하여 기록을 업데이트합니다."
+             git commit -m "Bot: WITH 봇 데이터 갱신"
+             git pull --rebase origin main
 #             git push
 #           fi
